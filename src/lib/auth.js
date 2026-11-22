@@ -3,14 +3,14 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const NAMA_COOKIE = "sesi";
-const LAMA_SESI_DETIK = 60 * 60 * 24 * 7;
+const COOKIE_NAME = "sesi";
+const SESSION_DURATION = 60 * 60 * 24 * 7;
 
-if (!process.env.RAHASIA_SESI) {
-    throw new Error("RAHASIA_SESI belum diatur di .env.local");
+if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET belum diatur di .env.local");
 }
 
-const kunciRahasia = new TextEncoder().encode(process.env.RAHASIA_SESI);
+const sessionSecret = new TextEncoder().encode(process.env.SESSION_SECRET);
 
 export async function buatSesi(pengguna) {
     const token = await new SignJWT({
@@ -21,24 +21,24 @@ export async function buatSesi(pengguna) {
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("7d")
-        .sign(kunciRahasia);
+        .sign(sessionSecret);
 
-    (await cookies()).set(NAMA_COOKIE, token, {
+    (await cookies()).set(COOKIE_NAME, token, {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         path: "/",
-        maxAge: LAMA_SESI_DETIK,
+        maxAge: SESSION_DURATION,
     });
 }
 
 export async function ambilSesi() {
-    const token = (await cookies()).get(NAMA_COOKIE)?.value;
+    const token = (await cookies()).get(COOKIE_NAME)?.value;
 
     if (!token) return null;
 
     try {
-        const { payload } = await jwtVerify(token, kunciRahasia);
+        const { payload } = await jwtVerify(token, sessionSecret);
         return payload;
     } catch {
         return null;
@@ -46,7 +46,7 @@ export async function ambilSesi() {
 }
 
 export async function hapusSesi() {
-    (await cookies()).delete(NAMA_COOKIE);
+    (await cookies()).delete(COOKIE_NAME);
 }
 
 export async function requireRole(...allowedRoles) {
