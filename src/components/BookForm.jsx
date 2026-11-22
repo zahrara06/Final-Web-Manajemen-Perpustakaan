@@ -1,59 +1,101 @@
-import Link from "next/link";
-import Field from "./Field";
+import Field from "@/components/Field";
 
-export default function BookForm({ action, buku, kategori }) {
-    const b = buku || {};
-
+export default function BookForm({
+    aksi,
+    daftarKategori,
+    buku = {},
+    untukBaru = false,
+}) {
     return (
-        <form action={action} className="card grid sm:grid-cols-2 gap-3">
-
-            {b.id && (
-                <input type="hidden" name="id" value={b.id} />
+        <form action={aksi} className="grid gap-4 md:grid-cols-2">
+            {buku.id && (
+                <input
+                    type="hidden"
+                    name="id"
+                    value={buku.id}
+                />
             )}
 
-            <Field label="Judul buku" name="judul" defaultValue={b.judul} />
-            <Field label="ISBN" name="isbn" defaultValue={b.isbn} />
-            <Field label="Pengarang" name="pengarang" defaultValue={b.pengarang} />
-            <Field label="Penerbit" name="penerbit" defaultValue={b.penerbit} />
+            <Field
+                label="Judul buku"
+                nama="judul"
+                nilai={buku.judul}
+            />
+
+            {untukBaru && (
+                <Field
+                    label="ISBN"
+                    nama="isbn"
+                />
+            )}
+
+            <Field
+                label="Penulis"
+                nama="penulis"
+                nilai={buku.penulis}
+            />
+
+            <Field
+                label="Penerbit"
+                nama="penerbit"
+                nilai={buku.penerbit}
+            />
 
             <Field
                 label="Tahun terbit"
-                name="tahun_terbit"
-                type="number"
-                min="1000"
-                max="2100"
-                defaultValue={b.tahun_terbit}
+                nama="tahun_terbit"
+                tipe="number"
+                min={1000}
+                nilai={buku.tahun_terbit}
             />
 
-            <label className="block text-sm">
-                <span className="text-slate-600">Kategori</span>
+            <Field
+                label="Kategori"
+                nama="kategori_id"
+                tipe="select"
+                nilai={buku.kategori_id}
+            >
+                {daftarKategori.map((kategori) => (
+                    <option key={kategori.id} value={kategori.id}>
+                        {kategori.nama}
+                    </option>
+                ))}
+            </Field>
 
-                <select
-                    name="category_id"
-                    required
-                    defaultValue={b.category_id || ""}
-                    className="inp mt-1"
-                >
-                    <option value="" disabled>Pilih kategori</option>
+            <Field
+                label="Jumlah stok"
+                nama="stok_total"
+                tipe="number"
+                min={0}
+                nilai={buku.stok_total ?? 1}
+            />
 
-                    {kategori.map((k) => (
-                        <option key={k.id} value={k.id}>
-                            {k.nama}
-                        </option>
-                    ))}
-                </select>
-            </label>
+            <Field
+                label="Maksimal pinjam (hari)"
+                nama="durasi_pinjam_hari"
+                tipe="number"
+                min={1}
+                nilai={buku.durasi_pinjam_hari ?? 7}
+            />
 
-            <Field label="Jumlah stok" name="stok_total" type="number" min="0" defaultValue={b.stok_total} />
-            <Field label="Durasi maks. pinjam (hari)" name="durasi_maks" type="number" min="1" defaultValue={b.durasi_maks} />
-            <Field label="Denda per hari (Rp)" name="denda_per_hari" type="number" min="0" defaultValue={b.denda_per_hari} />
-            <Field label="Tautan gambar sampul" name="cover_url" type="url" required={false} defaultValue={b.cover_url} />
+            <Field
+                label="Denda per hari (Rp)"
+                nama="denda_per_hari"
+                tipe="number"
+                min={0}
+                nilai={buku.denda_per_hari ?? 1000}
+            />
 
-            <div className="sm:col-span-2 flex gap-2">
-                <button className="btn">Simpan</button>
-                <Link href="/kelola/buku" className="btn-sec">Batal</Link>
-            </div>
+            <Field
+                label="Tautan gambar sampul (opsional)"
+                nama="gambar_sampul"
+                nilai={buku.gambar_sampul}
+                wajib={false}
+            />
 
+            <button className="col-span-full inline-block cursor-pointer rounded-xl border-[2.5px] border-biru-tua bg-kuning px-5 py-2.5 text-center font-bold text-biru-tua shadow-tombol transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55">
+                {untukBaru ? "Tambah buku" : "Simpan perubahan"}
+            </button>
         </form>
     );
 }
