@@ -1,75 +1,98 @@
 "use server";
+
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import { buatSesi, hapusSesi } from "@/lib/auth";
-import { keluar } from "@/lib/util";
+import { ambilTeks, alihkan } from "@/lib/util";
 
-export async function register(formData) {
-    const nama = String(formData.get("nama") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const nim = String(formData.get("nomor_identitas") || "").trim();
-    const password = String(formData.get("password") || "");
+const POLA_EMAIL_KAMPUS = /^[^\s@]+@([a-z0-9-]+\.)*(ac\.id|edu)$/i;
+const BERANDA_PERAN = {
+    Admin: "/admin",
+    Pegawai: "/pegawai",
+    Mahasiswa: "/mahasiswa",
+};
 
-    if (!nama || !email || !nim || !password) {
-        keluar("/register", "error", "Semua data wajib diisi.");
-    }
+export async function masuk(formData) {
+    const email = ambilTeks(formData, "email").toLowerCase();
+    const kataSandi = String(formData.get("kata_sandi") ?? "");
+    const dari = ambilTeks(formData, "dari");
+    const jalurMasuk = dari
+        ? `/login?dari=${encodeURIComponent(dari)}`
+        : "/login";
 
-    if (!/^[^\s@]+@[^\s@]+\.ac\.id$/.test(email)) {
-        keluar("/register", "error", "Gunakan email kampus (berakhiran .ac.id).");
-    }
-
-    if (password.length < 6) {
-        keluar("/register", "error", "Password minimal 6 karakter.");
-    }
-
-    const hash = await bcrypt.hash(password, 10);
-
-    try {
-        await pool.query(
-            "INSERT INTO users (nama, email, password, role, nomor_identitas) VALUES ($1,$2,$3,'mahasiswa',$4)",
-            [nama, email, hash, nim]
-        );
-    } catch (e) {
-        if (e.code === "23505") {
-            keluar("/register", "error", "Email atau NIM sudah terdaftar.");
-        }
-
-        throw e;
-    }
-
-    keluar("/login", "ok", "Registrasi berhasil, silakan masuk.");
-}
-
-export async function login(formData) {
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const password = String(formData.get("password") || "");
-
-    if (!email || !password) {
-        keluar("/login", "error", "Email dan password wajib diisi.");
+    if (!email || !kataSandi) {
+        alihkan(jalurMasuk, "Email dan kata sandi wajib diisi.", "error");
     }
 
     const { rows } = await pool.query(
-        "SELECT * FROM users WHERE email = $1",
+        "SELECT * FROM pengguna WHERE email = $1",
         [email]
     );
+    const pengguna = rows[0];
+    const cocok =
+        pengguna && (await bcrypt.compare(kataSandi, pengguna.kata_sandi_hash));
 
-    const user = rows[0];
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-        keluar("/login", "error", "Email atau password salah.");
+    if (!cocok) {
+        alihkan(jalurMasuk, "Email atau kata sandi salah.", "error");
     }
 
-    if (!user.aktif) {
-        keluar("/login", "error", "Akun Anda dinonaktifkan.");
+    if (!pengguna.aktif) {
+        alihkan(
+        jalurMasuk,
+        "Akun ini dinonaktifkan. Hubungi admin perpustakaan.",
+        "error"
+        );
     }
 
-    await buatSesi(user);
-
-    redirect("/" + user.role);
+    await buatSesi(pengguna);
+    const dariAman = dari.startsWith("/") && !dari.startsWith("//");
+    redirect(dariAman ? dari : BERANDA_PERAN[pengguna.peran]);
 }
 
-export async function logout() {
+export async function daftar(formData) {
+    const namaLengkap = ambilTeks(formData, "nama_lengkap");
+    const email = ambilTeks(formData, "email").toLowerCase();
+    const nomorIdentitas = ambilTeks(formData, "nomor_identitas");
+    const kataSandi = String(formData.get("kata_sandi") ?? "");
+
+    if (!namaLengkap || !email || !nomorIdentitas || !kataSandi) {
+        alihkan("/register", "Semua data wajib diisi.", "error");
+    }
+
+    if (!POLA_EMAIL_KAMPUS.test(email)) {
+        alihkan(
+        "/register",
+        "Gunakan email kampus (berakhiran .ac.id atau .edu).",
+        "error"
+        );
+    }
+
+    if (kataSandi.length < 6) {
+        alihkan("/register", "Kata sandi minimal 6 karakter.", "error");
+    }
+
+    let pengguna;
+    try {
+        const hash = await bcrypt.hash(kataSandi, 10);
+        const hasil = await pool.query(
+        `INSERT INTO pengguna (nama_lengkap, email, kata_sandi_hash, peran, nomor_identitas)
+        VALUES ($1, $2, $3, 'Mahasiswa', $4) RETURNING *`,
+        [namaLengkap, email, hash, nomorIdentitas]
+        );
+        pengguna = hasil.rows[0];
+    } catch (error) {
+        if (error.code === "23505") {
+        alihkan("/register", "Email atau NIM sudah terdaftar.", "error");
+        }
+        throw error;
+    }
+
+    await buatSesi(pengguna);
+    redirect("/mahasiswa");
+}
+
+export async function keluar() {
     await hapusSesi();
     redirect("/");
 }
