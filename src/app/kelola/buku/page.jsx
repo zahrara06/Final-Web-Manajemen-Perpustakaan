@@ -2,7 +2,7 @@ import Link from "next/link";
 import pool from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import Pesan from "@/components/Pesan";
-import DeleteButton from "@/components/DeleteButton";
+import DeleteButton from "@/components/TombolHapus";
 import { hapusBuku } from "@/app/actions/books";
 
 export const dynamic = "force-dynamic";
