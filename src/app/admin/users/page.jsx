@@ -1,109 +1,132 @@
+import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import Pesan from "@/components/Pesan";
+import { wajibPeran } from "@/lib/auth";
+import { tambahPengguna, ubahPengguna, hapusPengguna } from "@/app/actions/users";
+import UserForm from "@/components/UserForm";
 import TombolHapus from "@/components/TombolHapus";
-import FormUser from "@/components/FormUser";
-import { simpanUser, ubahUser, hapusUser } from "@/app/actions/users";
+import Pesan from "@/components/Pesan";
 
-export const dynamic = "force-dynamic";
-
-export default async function UsersPage({ searchParams }) {
-    const me = await requireRole("admin");
+export default async function KelolaPengguna({ searchParams }) {
+    const sesi = await wajibPeran("Admin");
     const sp = await searchParams;
 
-    const role = ["admin", "pegawai", "mahasiswa"].includes(sp.role)
-        ? sp.role
+    const peran = ["Admin", "Pegawai", "Mahasiswa"].includes(sp.peran)
+        ? sp.peran
         : "";
 
-    const users = (
-        await pool.query(
-            `SELECT id, nama, email, role, nomor_identitas, aktif
-             FROM users
-             WHERE ($1::text = '' OR role = $1::text)
-             ORDER BY id`,
-            [role]
-        )
-    ).rows;
+    const { rows: pengguna } = await pool.query(
+        `SELECT
+            id,
+            nama_lengkap,
+            email,
+            peran,
+            nomor_identitas,
+            aktif
+         FROM pengguna
+         WHERE ($1::text = '' OR peran = $1)
+         ORDER BY id`,
+        [peran]
+    );
+
+    const penggunaDiedit = pengguna.find(
+        (item) => String(item.id) === sp.edit
+    );
 
     return (
-        <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-purple-900">
-                Manajemen Pengguna
-            </h1>
+        <>
+            <h1>Kelola Pengguna</h1>
 
             <Pesan sp={sp} />
 
-            <details className="card">
-                <summary className="cursor-pointer font-semibold text-purple-600">
-                    + Tambah Pengguna
-                </summary>
-                <FormUser action={simpanUser} />
-            </details>
+            <section className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                <h2 className="mb-4">
+                    {penggunaDiedit
+                        ? `Ubah Pengguna #${penggunaDiedit.id}`
+                        : "Tambah Pengguna"}
+                </h2>
 
-            <form className="flex gap-2 items-center">
+                <UserForm
+                    key={penggunaDiedit?.id ?? "baru"}
+                    aksi={penggunaDiedit ? ubahPengguna : tambahPengguna}
+                    pengguna={penggunaDiedit}
+                    untukBaru={!penggunaDiedit}
+                />
+
+                {penggunaDiedit && (
+                    <p className="mt-4">
+                        <Link
+                            href="/admin/users"
+                            className="font-bold text-biru underline"
+                        >
+                            Batal mengubah
+                        </Link>
+                    </p>
+                )}
+            </section>
+
+            <form className="flex flex-wrap items-center gap-3 [&_input]:w-auto [&_input]:min-w-[150px] [&_input]:flex-1 [&_select]:w-auto [&_select]:min-w-[150px] [&_select]:flex-1">
                 <select
-                    name="role"
-                    defaultValue={role}
-                    className="inp sm:w-52"
+                    name="peran"
+                    defaultValue={peran}
+                    aria-label="Filter peran"
                 >
-                    <option value="">Semua role</option>
-                    <option value="admin">Admin</option>
-                    <option value="pegawai">Pegawai</option>
-                    <option value="mahasiswa">Mahasiswa</option>
+                    <option value="">Semua peran</option>
+                    <option>Admin</option>
+                    <option>Pegawai</option>
+                    <option>Mahasiswa</option>
                 </select>
 
-                <button className="btn">Filter</button>
+                <button className="inline-block cursor-pointer rounded-xl border-[2.5px] border-biru-tua bg-kuning px-5 py-2.5 text-center font-bold text-biru-tua shadow-tombol transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55">
+                    Terapkan filter
+                </button>
             </form>
 
-            <div className="card overflow-x-auto">
-                <table className="tbl">
+            <div className="overflow-x-auto">
+                <table className="w-full overflow-hidden rounded-[14px] border-separate border-spacing-0 border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5">
                     <thead>
                         <tr>
                             <th>Nama</th>
                             <th>Email</th>
-                            <th>Role</th>
-                            <th>No. Identitas</th>
+                            <th>Peran</th>
+                            <th>Nomor Identitas</th>
                             <th>Status</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {users.map((u) => (
-                            <tr key={u.id}>
-                                <td>{u.nama}</td>
-                                <td>{u.email}</td>
-                                <td>{u.role}</td>
-                                <td>{u.nomor_identitas}</td>
-                                <td>{u.aktif ? "Aktif" : "Nonaktif"}</td>
-
+                        {pengguna.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.nama_lengkap}</td>
+                                <td>{item.email}</td>
+                                <td>{item.peran}</td>
+                                <td>{item.nomor_identitas}</td>
                                 <td>
-                                    <details>
-                                        <summary className="cursor-pointer text-purple-600 text-sm">
+                                    {item.aktif ? "Aktif" : "Nonaktif"}
+                                </td>
+                                <td>
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                        <Link
+                                            href={`/admin/users?edit=${item.id}`}
+                                            className="font-bold text-biru underline"
+                                        >
                                             Edit
-                                        </summary>
+                                        </Link>
 
-                                        <FormUser
-                                            action={ubahUser}
-                                            user={u}
-                                        />
-                                    </details>
-
-                                    {u.id !== me.id && (
-                                        <div className="mt-2">
+                                        {item.id !== sesi.id && (
                                             <TombolHapus
-                                                action={hapusUser}
-                                                id={u.id}
-                                                pesan="Hapus akun ini?"
+                                                aksi={hapusPengguna}
+                                                id={item.id}
+                                                pesan={`Hapus akun ${item.nama_lengkap}?`}
                                             />
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </>
     );
 }
