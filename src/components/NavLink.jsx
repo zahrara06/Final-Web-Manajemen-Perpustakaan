@@ -1,22 +1,21 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function NavLink({ href, exact = false, children }) {
+export default function NavLink({ href, children }) {
     const pathname = usePathname();
-
-    const aktif = exact
-        ? pathname === href
-        : pathname.startsWith(href);
+    const aktif =
+        href === "/"
+        ? pathname === "/"
+        : pathname === href || pathname.startsWith(href + "/");
 
     return (
         <Link
             href={href}
-            className={
-                aktif
-                    ? "text-white font-semibold border-b-2 border-white pb-1"
-                    : "text-purple-100 hover:text-white transition"
-            }
+            className={`border-b-[3px] py-0.5 transition ${
+                aktif ? "border-biru" : "border-transparent hover:border-kuning"
+            }`}
         >
             {children}
         </Link>
