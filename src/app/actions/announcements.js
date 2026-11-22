@@ -1,89 +1,65 @@
 "use server";
+
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import { keluar } from "@/lib/util";
+import { wajibPeran } from "@/lib/auth";
+import { ambilTeks, ambilAngka, jalankan } from "@/lib/util";
 
-const P = "/kelola/pengumuman";
-
-function ambil(formData) {
-    return {
-        judul: String(formData.get("judul") || "").trim(),
-        konten: String(formData.get("konten") || "").trim(),
-        kategori: String(formData.get("kategori") || ""),
-        tanggal: String(formData.get("tanggal_rilis") || ""),
-        status: String(formData.get("status") || ""),
+function bacaPengumuman(formData) {
+    const data = {
+        judul: ambilTeks(formData, "judul"),
+        isi: ambilTeks(formData, "isi"),
+        kategori: ambilTeks(formData, "kategori"),
+        tanggal_rilis: ambilTeks(formData, "tanggal_rilis"),
+        status: ambilTeks(formData, "status"),
     };
+
+    if (!data.judul || !data.isi) {
+        throw new Error("Judul dan isi pengumuman wajib diisi.");
+    }
+
+    if (!data.tanggal_rilis) {
+        throw new Error("Tanggal rilis wajib diisi.");
+    }
+
+    return data;
 }
 
-function cek(d) {
-    if (!d.judul || !d.konten) {
-        return "Judul dan konten wajib diisi.";
-    }
+export async function tambahPengumuman(formData) {
+    const sesi = await wajibPeran("Pegawai", "Admin");
 
-    if (!["Operasional", "Layanan", "Acara"].includes(d.kategori)) {
-        return "Kategori tidak valid.";
-    }
+    await jalankan("/kelola/pengumuman", "Pengumuman ditambahkan.", async () => {
+        const p = bacaPengumuman(formData);
 
-    if (!["Draft", "Published"].includes(d.status)) {
-        return "Status tidak valid.";
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.tanggal)) {
-        return "Tanggal rilis tidak valid.";
-    }
-
-    return null;
-}
-
-export async function simpanPengumuman(formData) {
-    const user = await requireRole("pegawai", "admin");
-
-    const d = ambil(formData);
-    const err = cek(d);
-
-    if (err) {
-        keluar(P, "error", err);
-    }
-
-    await pool.query(
-        `INSERT INTO announcements
-         (judul, konten, kategori, tanggal_rilis, status, author_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [d.judul, d.konten, d.kategori, d.tanggal, d.status, user.id]
-    );
-
-    keluar(P, "ok", "Pengumuman ditambahkan.");
+        await pool.query(
+        `INSERT INTO pengumuman (judul, isi, kategori, tanggal_rilis, status, penulis_id)
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [p.judul, p.isi, p.kategori, p.tanggal_rilis, p.status, sesi.id]
+        );
+    });
 }
 
 export async function ubahPengumuman(formData) {
-    await requireRole("pegawai", "admin");
+    await wajibPeran("Pegawai", "Admin");
 
-    const id = Number(formData.get("id"));
-    const d = ambil(formData);
-    const err = cek(d);
+    await jalankan("/kelola/pengumuman", "Pengumuman diperbarui.", async () => {
+        const p = bacaPengumuman(formData);
+        const id = ambilAngka(formData, "id");
 
-    if (err) {
-        keluar(P, "error", err);
-    }
-
-    await pool.query(
-        `UPDATE announcements
-         SET judul = $1, konten = $2, kategori = $3,
-             tanggal_rilis = $4, status = $5
-         WHERE id = $6`,
-        [d.judul, d.konten, d.kategori, d.tanggal, d.status, id]
-    );
-
-    keluar(P, "ok", "Pengumuman diperbarui.");
+        await pool.query(
+        `UPDATE pengumuman
+        SET judul = $1, isi = $2, kategori = $3, tanggal_rilis = $4, status = $5
+        WHERE id = $6`,
+        [p.judul, p.isi, p.kategori, p.tanggal_rilis, p.status, id]
+        );
+    });
 }
 
 export async function hapusPengumuman(formData) {
-    await requireRole("pegawai", "admin");
+    await wajibPeran("Pegawai", "Admin");
 
-    await pool.query(
-        "DELETE FROM announcements WHERE id = $1",
-        [Number(formData.get("id"))]
-    );
+    await jalankan("/kelola/pengumuman", "Pengumuman dihapus.", async () => {
+        const id = ambilAngka(formData, "id");
 
-    keluar(P, "ok", "Pengumuman dihapus.");
+        await pool.query("DELETE FROM pengumuman WHERE id = $1", [id]);
+    });
 }
