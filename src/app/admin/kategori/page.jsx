@@ -1,80 +1,93 @@
+import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import Pesan from "@/components/Pesan";
+import { wajibPeran } from "@/lib/auth";
+import {tambahKategori, ubahKategori, hapusKategori} from "@/app/actions/categories";
+import CategoryForm from "@/components/CategoryForm";
 import TombolHapus from "@/components/TombolHapus";
-import FormKategori from "@/components/FormKategori";
-import { simpanKategori, ubahKategori, hapusKategori } from "@/app/actions/categories";
+import Pesan from "@/components/Pesan";
 
-export const dynamic = "force-dynamic";
-
-export default async function KategoriPage({ searchParams }) {
-    await requireRole("admin");
+export default async function KelolaKategori({ searchParams }) {
+    await wajibPeran("Admin");
 
     const sp = await searchParams;
 
-    const daftar = (
-        await pool.query(
-            `SELECT c.*, COUNT(b.id)::int AS jml_buku
-             FROM categories c
-             LEFT JOIN books b ON b.category_id = c.id
-             GROUP BY c.id
-             ORDER BY c.nama`
-        )
-    ).rows;
+    const { rows: kategori } = await pool.query(`
+        SELECT
+            k.*,
+            COUNT(b.id) AS jumlah_buku
+        FROM kategori k
+        LEFT JOIN buku b ON b.kategori_id = k.id
+        GROUP BY k.id
+        ORDER BY k.nama
+    `);
+
+    const kategoriDiedit = kategori.find(
+        (item) => String(item.id) === sp.edit
+    );
 
     return (
-        <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-purple-900">
-                Manajemen Kategori
-            </h1>
+        <>
+            <h1>Kelola Kategori</h1>
 
             <Pesan sp={sp} />
 
-            <details className="card">
-                <summary className="cursor-pointer font-semibold text-purple-600">
-                    + Tambah Kategori
-                </summary>
+            <section className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                <h2 className="mb-4">
+                    {kategoriDiedit
+                        ? `Ubah Kategori #${kategoriDiedit.id}`
+                        : "Tambah Kategori"}
+                </h2>
 
-                <FormKategori action={simpanKategori} />
-            </details>
+                <CategoryForm
+                    key={kategoriDiedit?.id ?? "baru"}
+                    aksi={kategoriDiedit ? ubahKategori : tambahKategori}
+                    kategori={kategoriDiedit}
+                />
 
-            <div className="card overflow-x-auto">
-                <table className="tbl">
+                {kategoriDiedit && (
+                    <p className="mt-4">
+                        <Link
+                            href="/admin/kategori"
+                            className="font-bold text-biru underline"
+                        >
+                            Batal mengubah
+                        </Link>
+                    </p>
+                )}
+            </section>
+
+            <div className="overflow-x-auto">
+                <table className="w-full overflow-hidden rounded-[14px] border-separate border-spacing-0 border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5">
                     <thead>
                         <tr>
-                            <th>Nama</th>
                             <th>Kode</th>
+                            <th>Nama</th>
                             <th>Deskripsi</th>
-                            <th>Jml Buku</th>
+                            <th>Jumlah Buku</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {daftar.map((k) => (
-                            <tr key={k.id}>
-                                <td>{k.nama}</td>
-                                <td>{k.kode}</td>
-                                <td>{k.deskripsi}</td>
-                                <td>{k.jml_buku}</td>
-
+                        {kategori.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.kode}</td>
+                                <td>{item.nama}</td>
+                                <td>{item.deskripsi}</td>
+                                <td>{item.jumlah_buku}</td>
                                 <td>
-                                    <details>
-                                        <summary className="cursor-pointer text-purple-600 text-sm">
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                        <Link
+                                            href={`/admin/kategori?edit=${item.id}`}
+                                            className="font-bold text-biru underline"
+                                        >
                                             Edit
-                                        </summary>
+                                        </Link>
 
-                                        <FormKategori
-                                            action={ubahKategori}
-                                            k={k}
-                                        />
-                                    </details>
-
-                                    <div className="mt-2">
                                         <TombolHapus
-                                            action={hapusKategori}
-                                            id={k.id}
-                                            pesan="Hapus kategori ini?"
+                                            aksi={hapusKategori}
+                                            id={item.id}
+                                            pesan={`Hapus kategori "${item.nama}"?`}
                                         />
                                     </div>
                                 </td>
@@ -83,6 +96,6 @@ export default async function KategoriPage({ searchParams }) {
                     </tbody>
                 </table>
             </div>
-        </div>
+        </>
     );
 }
