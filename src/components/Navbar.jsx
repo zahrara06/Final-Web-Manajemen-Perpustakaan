@@ -1,85 +1,75 @@
 import Link from "next/link";
-import { getUser } from "@/lib/auth";
-import { logout } from "@/app/actions/auth";
-import NavLink from "./NavLink";
+import { ambilSesi } from "@/lib/auth";
+import { keluar } from "@/app/actions/auth";
+import NavLink from "@/components/NavLink";
+
+const MENU_UMUM = [
+    { href: "/", nama: "Beranda" },
+    { href: "/katalog", nama: "Katalog" },
+    { href: "/pengumuman", nama: "Pengumuman" },
+];
+
+const MENU_PERAN = {
+    Admin: [
+        { href: "/admin", nama: "Dashboard Admin" },
+        { href: "/kelola/buku", nama: "Buku" },
+        { href: "/kelola/pengumuman", nama: "Info" },
+    ],
+    Pegawai: [
+        { href: "/pegawai", nama: "Sirkulasi" },
+        { href: "/kelola/buku", nama: "Kelola Buku" },
+        { href: "/kelola/pengumuman", nama: "Kelola Pengumuman" },
+    ],
+    Mahasiswa: [
+        { href: "/mahasiswa", nama: "Pinjaman Saya" },
+    ],
+};
 
 export default async function Navbar() {
-    const user = await getUser();
-
-    const menu = [
-        { href: "/", t: "Beranda", exact: true },
-        { href: "/katalog", t: "Katalog" },
-    ];
-
-    if (!user || user.role === "mahasiswa") {
-        menu.push({ href: "/pengumuman", t: "Pengumuman" });
-    }
-
-    if (user?.role === "mahasiswa") {
-        menu.push({ href: "/mahasiswa", t: "Dashboard" });
-    }
-
-    if (user?.role === "pegawai") {
-        menu.push(
-            { href: "/pegawai", t: "Dashboard", exact: true },
-            { href: "/kelola/buku", t: "Kelola Buku" },
-            { href: "/kelola/pengumuman", t: "Kelola Pengumuman" }
-        );
-    }
-
-    if (user?.role === "admin") {
-        menu.push(
-            { href: "/admin", t: "Dashboard", exact: true },
-            { href: "/admin/users", t: "Pengguna" },
-            { href: "/admin/kategori", t: "Kategori" },
-            { href: "/admin/transaksi", t: "Transaksi" },
-            { href: "/kelola/buku", t: "Buku" },
-            { href: "/kelola/pengumuman", t: "Pengumuman" },
-            { href: "/pegawai", t: "Sirkulasi" }
-        );
-    }
+    const sesi = await ambilSesi();
+    const menu = [...MENU_UMUM, ...(sesi ? MENU_PERAN[sesi.peran] : [])];
 
     return (
-        <nav className="bg-purple-700 text-white sticky top-0 z-10">
-            <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-                <Link href="/" className="text-lg font-bold">
-                    📚 Perpustakaan UNHAS
+        <header className="sticky top-0 z-20 border-b-[2.5px] border-biru-tua bg-white">
+            <div className="flex w-full flex-wrap items-center gap-6 px-[clamp(1rem,4vw,4.5rem)] py-3">
+                <Link
+                href="/"
+                className="flex items-center gap-2.5 font-judul text-[1.35rem] font-extrabold"
+                >
+                    <span className="grid size-9 -rotate-6 place-items-center rounded-[10px] border-[2.5px] border-biru-tua bg-kuning shadow-[2px_2px_0_#0b1b4d]">
+                        L
+                    </span>
+                    LiteraSpace
                 </Link>
 
-                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm flex-1">
+                <nav className="flex flex-1 flex-wrap gap-5 text-[0.95rem] font-semibold">
                     {menu.map((m) => (
-                        <li key={m.href + m.t}>
-                            <NavLink href={m.href} exact={m.exact}>
-                                {m.t}
-                            </NavLink>
-                        </li>
+                        <NavLink key={m.href} href={m.href}>
+                        {m.nama}
+                        </NavLink>
                     ))}
-                </ul>
+                </nav>
 
-                <div className="flex items-center gap-3 text-sm">
-                    {user ? (
-                        <>
-                            <span className="text-purple-100">
-                                {user.nama} ({user.role})
+                <div className="[&_form]:flex [&_form]:items-center [&_form]:gap-3">
+                    {sesi ? (
+                        <form action={keluar}>
+                            <span className="text-sm font-semibold">
+                                {sesi.nama} ({sesi.peran})
                             </span>
-
-                            <form action={logout}>
-                                <button className="btn-sec">
-                                    Keluar
-                                </button>
-                            </form>
-                        </>
+                            <button className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-white">
+                                Keluar
+                            </button>
+                        </form>
                     ) : (
                         <Link
-                            href="/login"
-                            className="btn bg-white text-purple-700 hover:bg-purple-100"
+                        href="/login"
+                        className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning"
                         >
-                            Masuk
+                        Masuk
                         </Link>
                     )}
                 </div>
-
             </div>
-        </nav>
+        </header>
     );
 }
