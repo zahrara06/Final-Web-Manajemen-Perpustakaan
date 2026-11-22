@@ -1,19 +1,14 @@
-export default function Pesan({ searchParams }) {
-    if (searchParams?.error) {
-        return (
-            <p className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-                {searchParams.error}
-            </p>
-        );
-    }
+export default function Pesan({ sp }) {
+  if (!sp?.pesan) return null;
 
-    if (searchParams?.ok) {
-        return (
-            <p className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
-                {searchParams.ok}
-            </p>
-        );
-    }
+  const warna =
+    sp.jenis === "error"
+      ? "border-red-700 bg-red-100 text-red-900"
+      : "border-biru-tua bg-kuning-muda";
 
-    return null;
+  return (
+    <p className={`rounded-xl border-2 px-4 py-3 font-semibold ${warna}`}>
+      {sp.pesan}
+    </p>
+  );
 }
