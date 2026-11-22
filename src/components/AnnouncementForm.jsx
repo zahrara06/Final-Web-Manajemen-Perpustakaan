@@ -1,12 +1,9 @@
-import Field from "./Field";
-import { tglInput } from "@/lib/util";
+import Field from "@/components/Field";
+import { hariIni } from "@/lib/util";
 
-export default function AnnouncementForm({ action, p }) {
-    const pengumuman = p || {};
-
+export default function AnnouncementForm({ aksi, pengumuman = {} }) {
     return (
-        <form action={action} className="grid sm:grid-cols-3 gap-3 mt-3">
-
+        <form action={aksi} className="grid gap-4 md:grid-cols-2">
             {pengumuman.id && (
                 <input
                     type="hidden"
@@ -15,63 +12,50 @@ export default function AnnouncementForm({ action, p }) {
                 />
             )}
 
-            <div className="sm:col-span-3">
-                <Field
-                    label="Judul pengumuman"
-                    name="judul"
-                    defaultValue={pengumuman.judul}
-                />
-            </div>
+            <Field
+                label="Judul pengumuman"
+                nama="judul"
+                nilai={pengumuman.judul}
+            />
 
-            <label className="block text-sm sm:col-span-3">
-                <span className="text-slate-600">Isi konten</span>
-                <textarea
-                    name="konten"
-                    rows={4}
-                    required
-                    defaultValue={pengumuman.konten}
-                    className="inp mt-1"
-                />
-            </label>
-
-            <label className="block text-sm">
-                <span className="text-slate-600">Kategori</span>
-                <select
-                    name="kategori"
-                    defaultValue={pengumuman.kategori || "Operasional"}
-                    className="inp mt-1"
-                >
-                    <option>Operasional</option>
-                    <option>Layanan</option>
-                    <option>Acara</option>
-                </select>
-            </label>
+            <Field
+                label="Kategori"
+                nama="kategori"
+                tipe="select"
+                nilai={pengumuman.kategori}
+            >
+                {["Operasional", "Layanan", "Acara"].map((kategori) => (
+                    <option key={kategori}>{kategori}</option>
+                ))}
+            </Field>
 
             <Field
                 label="Tanggal rilis"
-                name="tanggal_rilis"
-                type="date"
-                defaultValue={
-                    tglInput(pengumuman.tanggal_rilis) || tglInput(new Date())
-                }
+                nama="tanggal_rilis"
+                tipe="date"
+                nilai={pengumuman.tanggal_rilis ?? hariIni()}
             />
 
-            <label className="block text-sm">
-                <span className="text-slate-600">Status publikasi</span>
-                <select
-                    name="status"
-                    defaultValue={pengumuman.status || "Draft"}
-                    className="inp mt-1"
-                >
-                    <option>Draft</option>
-                    <option>Published</option>
-                </select>
-            </label>
+            <Field
+                label="Status publikasi"
+                nama="status"
+                tipe="select"
+                nilai={pengumuman.status ?? "Draft"}
+            >
+                <option>Draft</option>
+                <option>Published</option>
+            </Field>
 
-            <div className="sm:col-span-3">
-                <button className="btn">Simpan</button>
-            </div>
+            <Field
+                label="Isi pengumuman"
+                nama="isi"
+                tipe="textarea"
+                nilai={pengumuman.isi}
+            />
 
+            <button className="col-span-full inline-block cursor-pointer rounded-xl border-[2.5px] border-biru-tua bg-kuning px-5 py-2.5 text-center font-bold text-biru-tua shadow-tombol transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55">
+                {pengumuman.id ? "Simpan perubahan" : "Tambah pengumuman"}
+            </button>
         </form>
     );
 }
