@@ -1,62 +1,62 @@
+
 @import "tailwindcss";
 
 @theme {
-    --color-purple-50: #f7f3ff;
-    --color-purple-100: #ede5fe;
-    --color-purple-200: #dccffc;
-    --color-purple-300: #c4b0f8;
-    --color-purple-400: #a98bf0;
-    --color-purple-500: #8f6be6;
-    --color-purple-600: #6740bd;
-    --color-purple-700: #4f3196;
-    --color-purple-800: #402879;
-    --color-purple-900: #33206b;
+    --color-biru: #1d4ed8;
+    --color-biru-tua: #0b1b4d;
+    --color-biru-muda: #dbe7ff;
+    --color-kuning: #ffc72c;
+    --color-kuning-muda: #fff3c4;
+
+    --font-sans: Inter, system-ui, sans-serif;
+    --font-judul: "Bricolage Grotesque", Inter, sans-serif;
+
+    --shadow-keras: 4px 4px 0 var(--color-biru-tua);
+    --shadow-tombol: 3px 3px 0 var(--color-biru-tua);
+    --shadow-hero: 9px 9px 0 var(--color-kuning);
 }
 
 @layer base {
-    * {
-        box-sizing: border-box;
+    h1,h2,h3 {
+        font-family: var(--font-judul);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
     }
 
-    body {
-        @apply bg-purple-50 text-slate-800;
-    }
-}
-
-@layer components {
-    .card {
-        @apply rounded-2xl border border-purple-100 bg-white p-5 shadow-sm;
+    h1 {
+        font-size: clamp(2rem, 4.6vw, 4.4rem);
+        font-weight: 800;
     }
 
-    .inp {
-        @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-800 outline-none transition;
-        @apply focus:border-purple-500 focus:ring-2 focus:ring-purple-100;
+    h2 {
+        font-size: 1.7rem;
+        font-weight: 800;
     }
 
-    .btn {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 font-medium text-white transition;
-        @apply hover:bg-purple-700 active:scale-[0.98];
+    h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
     }
 
-    .btn-sec {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-white px-5 py-2.5 font-medium text-purple-700 transition;
-        @apply hover:bg-purple-50;
+    small {
+        font-size: 0.85rem;
+        opacity: 0.8;
     }
 
-    .btn-red {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 font-medium text-white transition;
-        @apply hover:bg-red-600;
+    :focus-visible {
+        outline: 3px solid var(--color-biru);
+        outline-offset: 2px;
     }
 
-    .tbl {
-        @apply w-full border-collapse text-left text-sm;
-    }
-
-    .tbl th {
-        @apply bg-purple-50 px-4 py-3 font-semibold text-purple-900;
-    }
-
-    .tbl td {
-        @apply border-t border-slate-100 px-4 py-3 text-slate-700;
+    input:not([type="hidden"]),
+    select,
+    textarea {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        font: inherit;
+        color: var(--color-biru-tua);
+        background: #fff;
+        border: 2.5px solid var(--color-biru-tua);
+        border-radius: 10px;
     }
 }
