@@ -1,61 +1,114 @@
 import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
+import { wajibPeran } from "@/lib/auth";
 import { rupiah } from "@/lib/util";
 
-export const dynamic = "force-dynamic";
+export default async function DashboardAdmin() {
+    await wajibPeran("Admin");
 
-export default async function AdminPage() {
-    await requireRole("admin");
+    const { rows } = await pool.query(`
+        SELECT
+            (SELECT COUNT(*) FROM buku) AS total_judul,
+            (SELECT COALESCE(SUM(stok_total), 0) FROM buku) AS total_eksemplar,
+            (SELECT COUNT(*) FROM pengguna WHERE peran = 'Mahasiswa') AS total_mahasiswa,
+            (SELECT COUNT(*) FROM peminjaman WHERE status = 'Sedang Dipinjam') AS transaksi_aktif,
+            (SELECT COALESCE(SUM(denda_total), 0) FROM peminjaman WHERE status_denda = 'Lunas') AS denda_lunas
+    `);
 
-    const { rows: [s] } = await pool.query(
-        `SELECT
-            (SELECT COUNT(*) FROM books)::int AS judul,
-            (SELECT COALESCE(SUM(stok_total), 0) FROM books)::int AS eksemplar,
-            (SELECT COUNT(*) FROM users WHERE role = 'mahasiswa')::int AS mahasiswa,
-            (SELECT COUNT(*) FROM loans WHERE status = 'dipinjam')::int AS aktif,
-            (SELECT COALESCE(SUM(denda_nominal), 0)
-             FROM loans WHERE denda_status = 'lunas')::int AS denda_lunas`
-    );
-
-    const kartu = [
-        ["Total Judul Buku", s.judul],
-        ["Total Eksemplar Stok", s.eksemplar],
-        ["Mahasiswa Terdaftar", s.mahasiswa],
-        ["Transaksi Aktif", s.aktif],
-        ["Denda Telah Lunas", rupiah(s.denda_lunas)],
-    ];
+    const statistik = rows[0];
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-purple-900">
-                Dashboard Admin
-            </h1>
+        <>
+            <h1>Dashboard Admin</h1>
 
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                {kartu.map(([t, v]) => (
-                    <div key={t} className="card">
-                        <p className="text-sm text-slate-500">{t}</p>
-                        <p className="text-2xl font-bold text-purple-700">
-                            {v}
-                        </p>
-                    </div>
-                ))}
-            </div>
+            <section className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5 [&>div:nth-child(odd)]:bg-kuning [&_strong]:block [&_strong]:font-judul [&_strong]:text-[2.2rem]">
+                <div className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                    <strong>{statistik.total_judul}</strong>
+                    Judul buku
+                </div>
 
-            <div className="flex flex-wrap gap-3">
-                <Link href="/admin/users" className="btn">
-                    Manajemen Pengguna
+                <div className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                    <strong>{statistik.total_eksemplar}</strong>
+                    Total eksemplar
+                </div>
+
+                <div className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                    <strong>{statistik.total_mahasiswa}</strong>
+                    Mahasiswa terdaftar
+                </div>
+
+                <div className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                    <strong>{statistik.transaksi_aktif}</strong>
+                    Transaksi aktif
+                </div>
+
+                <div className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+                    <strong>{rupiah(statistik.denda_lunas)}</strong>
+                    Denda lunas
+                </div>
+            </section>
+
+            <section className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+                <Link
+                    href="/admin/users"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Kelola Pengguna
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Akun Admin, Pegawai, dan Mahasiswa
+                    </span>
                 </Link>
 
-                <Link href="/admin/kategori" className="btn">
-                    Manajemen Kategori
+                <Link
+                    href="/admin/kategori"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Kelola Kategori
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Master data kategori buku
+                    </span>
                 </Link>
 
-                <Link href="/admin/transaksi" className="btn">
-                    Log Transaksi
+                <Link
+                    href="/admin/transaksi"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Monitoring Transaksi
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Seluruh log peminjaman
+                    </span>
                 </Link>
-            </div>
-        </div>
+
+                <Link
+                    href="/kelola/buku"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Kelola Buku
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Koleksi dan stok
+                    </span>
+                </Link>
+
+                <Link
+                    href="/kelola/pengumuman"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Kelola Pengumuman
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Berita dan agenda
+                    </span>
+                </Link>
+
+                <Link
+                    href="/pegawai"
+                    className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 font-bold shadow-keras"
+                >
+                    Peminjaman & Pengembalian
+                    <span className="mt-0.5 block text-sm font-normal opacity-75">
+                        Persetujuan pinjaman, pengembalian buku, dan pengelolaan denda
+                    </span>
+                </Link>
+            </section>
+        </>
     );
 }
