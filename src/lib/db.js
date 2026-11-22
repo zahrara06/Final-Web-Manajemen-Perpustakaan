@@ -8,19 +8,15 @@ types.setTypeParser(1700, Number);
 types.setTypeParser(1082, (nilai) => nilai);
 types.setTypeParser(1114, (nilai) => nilai);
 
-let pool = globalThis.kolamKoneksi;
+const pool = globalThis.kolamKoneksi ?? new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
 
-if (!pool) {
-    pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-    });
+globalThis.kolamKoneksi = pool;
 
-    pool.on("error", (error) => {
-        console.error("Unexpected database error:", error);
-    });
-
-    globalThis.kolamKoneksi = pool;
-}
+pool.on("error", (error) => {
+    console.error("Unexpected database error:", error);
+});
 
 export default pool;
 
@@ -30,11 +26,11 @@ export async function transaksi(fungsiTransaksi) {
     try {
         await koneksi.query("BEGIN");
 
-        const hasilTransaksi = await fungsiTransaksi(koneksi);
+        const hasil = await fungsiTransaksi(koneksi);
 
         await koneksi.query("COMMIT");
 
-        return hasilTransaksi;
+        return hasil;
     } catch (error) {
         await koneksi.query("ROLLBACK");
         throw error;

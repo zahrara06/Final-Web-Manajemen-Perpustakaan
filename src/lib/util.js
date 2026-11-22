@@ -1,41 +1,57 @@
-import { redirect } from "next/navigation"
+import "server-only";
+import { redirect } from "next/navigation";
 
-export function keluar(path, tipe, pesan) {
-    let pemisah = "?";
+export const rupiah = (angka) =>
+    "Rp " + Number(angka || 0).toLocaleString("id-ID");
 
-    if (path.includes("?")) {
-        pemisah = "&";
+export const formatTanggal = (teks) =>
+    teks
+        ? String(teks).slice(0, 10).split("-").reverse().join("/")
+        : "-";
+
+export const hariIni = () =>
+    new Date().toLocaleDateString("sv-SE");
+
+export const ambilTeks = (formData, nama) =>
+    String(formData.get(nama) ?? "").trim();
+
+export const ambilAngka = (formData, nama) =>
+    Number(formData.get(nama));
+
+export function pesanError(error) {
+    if (error.code === "23505") {
+        return "Data gagal disimpan: ada nilai unik (email, ISBN, kode, atau nomor identitas) yang sudah dipakai.";
     }
 
-    redirect(`${path}${pemisah}${tipe}=${encodeURIComponent(pesan)}`);
+    if (error.code === "23503") {
+        return "Data tidak valid atau masih terhubung dengan data lain.";
+    }
+
+    if (error.code === "23514") {
+        return "Ada nilai yang tidak memenuhi aturan (misalnya stok negatif).";
+    }
+
+    return error.message;
 }
 
-export function rupiah(angka) {
-    let hasil = Number(angka);
+export function alihkan(jalur, pesan, jenis = "sukses") {
+    const pemisah = jalur.includes("?") ? "&" : "?";
 
-    if (!hasil) {
-        hasil = 0;
-    }
-
-    return "Rp " + hasil.toLocaleString("id-ID");
+    redirect(
+        `${jalur}${pemisah}pesan=${encodeURIComponent(pesan)}&jenis=${jenis}`
+    );
 }
 
-export const tgl = (tanggal) => {
-    if (tanggal) {
-        return new Date(tanggal).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        });
-    } else {
-        return "-";
-    }
-}
+export async function jalankan(jalurTujuan, pesanSukses, fungsiAksi) {
+    let pesan = pesanSukses;
+    let jenis = "sukses";
 
-export function tglInput(tanggal) {
-    if (!tanggal) {
-        return "";
+    try {
+        await fungsiAksi();
+    } catch (error) {
+        pesan = pesanError(error);
+        jenis = "error";
     }
 
-    return new Date(tanggal).toLocaleDateString("sv-SE");
+    alihkan(jalurTujuan, pesan, jenis);
 }

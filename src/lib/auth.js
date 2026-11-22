@@ -1,19 +1,19 @@
 import "server-only";
+import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SignJWT, jwtVerify } from "jose";
 
 const NAMA_COOKIE = "sesi";
 const LAMA_SESI_DETIK = 60 * 60 * 24 * 7;
 
-if (!process.env.SESSION_SECRET) {
-    throw new Error("SESSION_SECRET belum diatur di .env.local");
+if (!process.env.RAHASIA_SESI) {
+    throw new Error("RAHASIA_SESI belum diatur di .env.local");
 }
 
-const kunciSesi = new TextEncoder().encode(process.env.SESSION_SECRET);
+const kunciRahasia = new TextEncoder().encode(process.env.RAHASIA_SESI);
 
 export async function buatSesi(pengguna) {
-    const tokenSesi = await new SignJWT({
+    const token = await new SignJWT({
         id: pengguna.id,
         nama: pengguna.nama_lengkap,
         peran: pengguna.peran,
@@ -21,26 +21,24 @@ export async function buatSesi(pengguna) {
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("7d")
-        .sign(kunciSesi);
+        .sign(kunciRahasia);
 
-    (await cookies()).set(NAMA_COOKIE, tokenSesi, {
+    (await cookies()).set(NAMA_COOKIE, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: LAMA_SESI_DETIK,
     });
 }
 
 export async function ambilSesi() {
-    const tokenSesi = (await cookies()).get(NAMA_COOKIE)?.value;
+    const token = (await cookies()).get(NAMA_COOKIE)?.value;
 
-    if (!tokenSesi) {
-        return null;
-    }
+    if (!token) return null;
 
     try {
-        const { payload } = await jwtVerify(tokenSesi, kunciSesi);
+        const { payload } = await jwtVerify(token, kunciRahasia);
         return payload;
     } catch {
         return null;
@@ -51,15 +49,11 @@ export async function hapusSesi() {
     (await cookies()).delete(NAMA_COOKIE);
 }
 
-export async function wajibPeran(...peranDiizinkan) {
+export async function requireRole(...allowedRoles) {
     const sesi = await ambilSesi();
 
-    if (!sesi) {
+    if (!sesi || !allowedRoles.includes(sesi.peran)) {
         redirect("/login");
-    }
-
-    if (!peranDiizinkan.includes(sesi.peran)) {
-        redirect("/");
     }
 
     return sesi;
