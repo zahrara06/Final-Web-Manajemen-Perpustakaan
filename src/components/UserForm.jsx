@@ -1,72 +1,67 @@
-import Field from "./Field";
+import Field from "@/components/Field";
 
-export default function UserForm({ action, user }) {
-    const dataUser = user || {};
+const DAFTAR_PERAN = ["Mahasiswa", "Pegawai", "Admin"];
 
-    return (
-        <form action={action} className="grid sm:grid-cols-2 gap-3 mt-3">
+export default function UserForm({ aksi, pengguna = {}, untukBaru = false }) {
+  return (
+    <form action={aksi} className="grid gap-4 md:grid-cols-2">
+        {pengguna.id && (
+            <input type="hidden" name="id" value={pengguna.id} />
+        )}
 
-            {dataUser.id && (
-                <input type="hidden" name="id" value={dataUser.id} />
-            )}
+        <Field
+            label="Nama lengkap"
+            nama="nama_lengkap"
+            nilai={pengguna.nama_lengkap}
+        />
 
+        <Field
+            label="Email"
+            nama="email"
+            tipe="email"
+            nilai={pengguna.email}
+        />
+
+        {untukBaru && (
             <Field
-                label="Nama lengkap"
-                name="nama"
-                defaultValue={dataUser.nama}
+            label="Kata sandi"
+            nama="kata_sandi"
+            tipe="password"
             />
+        )}
 
+        <Field
+            label="Peran"
+            nama="peran"
+            tipe="select"
+            nilai={pengguna.peran}
+        >
+            {DAFTAR_PERAN.map((p) => (
+            <option key={p}>{p}</option>
+            ))}
+        </Field>
+
+        {untukBaru ? (
             <Field
-                label="Email"
-                name="email"
-                type="email"
-                defaultValue={dataUser.email}
+            label="Nomor identitas / NIM"
+            nama="nomor_identitas"
             />
+        
+        ) : (
+            <Field
+            label="Status akun"
+            nama="aktif"
+            tipe="select"
+            nilai={pengguna.aktif}
+            >
+            <option value="true">Aktif</option>
+            <option value="false">Nonaktif</option>
+            </Field>
+        )}
 
-            {!dataUser.id && (
-                <Field
-                    label="Password (min. 6 karakter)"
-                    name="password"
-                    type="password"
-                    minLength={6}
-                />
-            )}
-
-            {!dataUser.id && (
-                <Field
-                    label="Nomor identitas / NIM"
-                    name="nomor_identitas"
-                />
-            )}
-
-            <label className="block text-sm">
-                <span className="text-slate-600">Role</span>
-                <select
-                    name="role"
-                    defaultValue={dataUser.role || "mahasiswa"}
-                    className="inp mt-1"
-                >
-                    <option value="admin">Admin</option>
-                    <option value="pegawai">Pegawai</option>
-                    <option value="mahasiswa">Mahasiswa</option>
-                </select>
-            </label>
-
-            {dataUser.id && (
-                <label className="flex items-center gap-2 text-sm sm:mt-6">
-                    <input
-                        type="checkbox"
-                        name="aktif"
-                        defaultChecked={dataUser.aktif}
-                    />
-                    Akun aktif
-                </label>
-            )}
-
-            <div className="sm:col-span-2">
-                <button className="btn">Simpan</button>
-            </div>
-
+            <button className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning col-span-full">
+                {untukBaru ? "Tambah pengguna" : "Simpan perubahan"}
+            </button>
         </form>
     );
 }
