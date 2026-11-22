@@ -1,149 +1,139 @@
 "use server";
-import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import { keluar } from "@/lib/util";
 
-function ambil(formData) {
-    const d = {
-        judul: String(formData.get("judul") || "").trim(),
-        isbn: String(formData.get("isbn") || "").trim(),
-        pengarang: String(formData.get("pengarang") || "").trim(),
-        penerbit: String(formData.get("penerbit") || "").trim(),
-        tahun: Number(formData.get("tahun_terbit")),
-        kategori: Number(formData.get("category_id")),
-        stok: Number(formData.get("stok_total")),
-        durasi: Number(formData.get("durasi_maks")),
-        denda: Number(formData.get("denda_per_hari")),
-        cover: String(formData.get("cover_url") || "").trim() || null,
+import pool from "@/lib/db";
+import { wajibPeran } from "@/lib/auth";
+import { ambilTeks, ambilAngka, jalankan } from "@/lib/util";
+
+function bacaBuku(formData) {
+    const data = {
+        judul: ambilTeks(formData, "judul"),
+        penulis: ambilTeks(formData, "penulis"),
+        penerbit: ambilTeks(formData, "penerbit"),
+        gambarSampul: ambilTeks(formData, "gambar_sampul") || null,
+        tahunTerbit: ambilAngka(formData, "tahun_terbit"),
+        kategoriId: ambilAngka(formData, "kategori_id"),
+        stokTotal: ambilAngka(formData, "stok_total"),
+        durasiPinjam: ambilAngka(formData, "durasi_pinjam_hari"),
+        dendaPerHari: ambilAngka(formData, "denda_per_hari"),
     };
 
-    let err = null;
-
-    if (!d.judul || !d.isbn || !d.pengarang || !d.penerbit) {
-        err = "Semua isian wajib diisi.";
-    } else if (!Number.isInteger(d.tahun) || d.tahun < 1000 || d.tahun > 2100) {
-        err = "Tahun terbit tidak valid.";
-    } else if (!Number.isInteger(d.kategori) || d.kategori <= 0) {
-        err = "Pilih kategori.";
-    } else if (!Number.isInteger(d.stok) || d.stok < 0) {
-        err = "Stok tidak boleh negatif.";
-    } else if (!Number.isInteger(d.durasi) || d.durasi < 1) {
-        err = "Durasi pinjam minimal 1 hari.";
-    } else if (!Number.isInteger(d.denda) || d.denda < 0) {
-        err = "Denda tidak boleh negatif.";
+    if (!data.judul || !data.penulis || !data.penerbit) {
+        throw new Error("Judul, penulis, dan penerbit wajib diisi.");
     }
 
-    return { d, err };
+    const angkaWajib = [
+        data.tahunTerbit,
+        data.kategoriId,
+        data.stokTotal,
+        data.durasiPinjam,
+        data.dendaPerHari,
+    ];
+
+    if (angkaWajib.some((n) => !Number.isInteger(n))) {
+        throw new Error(
+            "Tahun, kategori, stok, durasi, dan denda harus berupa bilangan bulat."
+        );
+    }
+
+    if (data.stokTotal < 0 || data.dendaPerHari < 0) {
+        throw new Error("Stok dan denda tidak boleh negatif.");
+    }
+
+    if (data.durasiPinjam < 1) {
+        throw new Error("Durasi pinjam minimal 1 hari.");
+    }
+
+    return data;
 }
 
-export async function simpanBuku(formData) {
-    await requireRole("pegawai", "admin");
+export async function tambahBuku(formData) {
+    await wajibPeran("Pegawai", "Admin");
 
-    const { d, err } = ambil(formData);
-
-    if (err) {
-        keluar("/kelola/buku/baru", "error", err);
-    }
-
-    try {
-        await pool.query(
-            `INSERT INTO books
-             (judul, isbn, pengarang, penerbit, tahun_terbit, category_id,
-              stok_total, stok_tersedia, durasi_maks, denda_per_hari, cover_url)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10)`,
-            [
-                d.judul, d.isbn, d.pengarang, d.penerbit,
-                d.tahun, d.kategori, d.stok, d.durasi, d.denda, d.cover
-            ]
-        );
-    } catch (e) {
-        if (e.code === "23505") {
-            keluar("/kelola/buku/baru", "error", "ISBN sudah terdaftar.");
+    await jalankan("/kelola/buku", "Buku berhasil ditambahkan.", async () => {
+        const isbn = ambilTeks(formData, "isbn");
+        if (!isbn) {
+            throw new Error("ISBN wajib diisi.");
         }
 
-        throw e;
-    }
-
-    keluar("/kelola/buku", "ok", "Buku ditambahkan.");
+        const b = bacaBuku(formData);
+        await pool.query(
+            `INSERT INTO buku (
+                judul, isbn, penulis, penerbit, tahun_terbit, kategori_id,
+                stok_total, stok_tersedia, durasi_pinjam_hari, denda_per_hari, gambar_sampul
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10)`,
+            [
+            b.judul,
+            isbn,
+            b.penulis,
+            b.penerbit,
+            b.tahunTerbit,
+            b.kategoriId,
+            b.stokTotal,
+            b.durasiPinjam,
+            b.dendaPerHari,
+            b.gambarSampul,
+            ]
+        );
+    });
 }
 
 export async function ubahBuku(formData) {
-    await requireRole("pegawai", "admin");
+    await wajibPeran("Pegawai", "Admin");
 
-    const id = Number(formData.get("id"));
-    const balik = `/kelola/buku/${id}`;
-    const { d, err } = ambil(formData);
+    await jalankan("/kelola/buku", "Data buku diperbarui.", async () => {
+        const b = bacaBuku(formData);
+        const id = ambilAngka(formData, "id");
 
-    if (err) {
-        keluar(balik, "error", err);
-    }
-
-    const { rows: [c] } = await pool.query(
-        `SELECT COUNT(*)::int AS n
-         FROM loans
-         WHERE book_id = $1 AND status = 'dipinjam'`,
-        [id]
-    );
-
-    if (d.stok < c.n) {
-        keluar(
-            balik,
-            "error",
-            `Stok tidak boleh kurang dari jumlah yang sedang dipinjam (${c.n}).`
-        );
-    }
-
-    try {
         await pool.query(
-            `UPDATE books
-             SET judul = $1, isbn = $2, pengarang = $3, penerbit = $4,
-                 tahun_terbit = $5, category_id = $6, stok_total = $7,
-                 stok_tersedia = $7 - $11::int, durasi_maks = $8,
-                 denda_per_hari = $9, cover_url = $10
-             WHERE id = $12`,
+            `UPDATE buku
+            SET judul = $1,
+                penulis = $2,
+                penerbit = $3,
+                tahun_terbit = $4,
+                kategori_id = $5,
+                stok_tersedia = stok_tersedia + ($6 - stok_total),
+                stok_total = $6,
+                durasi_pinjam_hari = $7,
+                denda_per_hari = $8,
+                gambar_sampul = $9
+            WHERE id = $10`,
             [
-                d.judul, d.isbn, d.pengarang, d.penerbit,
-                d.tahun, d.kategori, d.stok, d.durasi,
-                d.denda, d.cover, c.n, id
+                b.judul,
+                b.penulis,
+                b.penerbit,
+                b.tahunTerbit,
+                b.kategoriId,
+                b.stokTotal,
+                b.durasiPinjam,
+                b.dendaPerHari,
+                b.gambarSampul,
+                id,
             ]
         );
-    } catch (e) {
-        if (e.code === "23505") {
-            keluar(balik, "error", "ISBN sudah dipakai buku lain.");
-        }
-
-        throw e;
-    }
-
-    keluar("/kelola/buku", "ok", "Buku diperbarui.");
+    });
 }
 
 export async function hapusBuku(formData) {
-    await requireRole("pegawai", "admin");
+    await wajibPeran("Pegawai", "Admin");
 
-    const id = Number(formData.get("id"));
-
-    const aktif = await pool.query(
-        `SELECT 1
-         FROM loans
-         WHERE book_id = $1
-         AND status IN ('menunggu', 'dipinjam')
-         LIMIT 1`,
-        [id]
-    );
-
-    if (aktif.rowCount > 0) {
-        keluar(
-            "/kelola/buku",
-            "error",
-            "Buku sedang dipinjam/diajukan, tidak dapat dihapus."
+    await jalankan("/kelola/buku", "Buku dihapus.", async () => {
+        const id = ambilAngka(formData, "id");
+        const dipinjam = await pool.query(
+            `SELECT 1
+            FROM peminjaman
+            WHERE buku_id = $1
+                AND status IN ('Menunggu Konfirmasi', 'Sedang Dipinjam')
+            LIMIT 1`,
+            [id]
         );
-    }
 
-    await pool.query(
-        "DELETE FROM books WHERE id = $1",
-        [id]
-    );
+        if (dipinjam.rowCount > 0) {
+            throw new Error(
+                "Buku tidak dapat dihapus karena sedang dipinjam atau diajukan."
+            );
+        }
 
-    keluar("/kelola/buku", "ok", "Buku dihapus.");
+        await pool.query("DELETE FROM buku WHERE id = $1", [id]);
+    });
 }
