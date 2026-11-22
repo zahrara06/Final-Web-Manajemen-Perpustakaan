@@ -1,5 +1,5 @@
 import pool from "@/lib/db";
-import Badge from "@/components/StatusBadge";
+import Badge from "@/components/Badge";
 import { wajibPeran } from "@/lib/auth";
 import { rupiah, formatTanggal } from "@/lib/util";
 

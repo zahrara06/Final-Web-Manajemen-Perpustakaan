@@ -3,7 +3,7 @@ import pool from "@/lib/db";
 import { formatTanggal } from "@/lib/util";
 import Latar3D from "@/components/Latar3D";
 import BookCard from "@/components/BookCard";
-import Badge from "@/components/StatusBadge";
+import Badge from "@/components/Badge";
 
 export default async function Beranda() {
     const populer = await pool.query(`
