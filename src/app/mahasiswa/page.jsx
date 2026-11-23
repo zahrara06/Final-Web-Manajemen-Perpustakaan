@@ -1,360 +1,283 @@
 import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
+import { wajibPeran } from "@/lib/auth";
+import { rupiah, formatTanggal } from "@/lib/util";
+import { buatPengingatJatuhTempo, ambilNotif } from "@/lib/notif";
+import { ajukanPerpanjangan, beriUlasan, tandaiNotifDibaca } from "@/app/actions/loans";
 import Badge from "@/components/Badge";
+import Field from "@/components/Field";
 import Pesan from "@/components/Pesan";
-import { ajukanPerpanjang, batalReservasi } from "@/app/actions/loans";
-import { rupiah, tgl } from "@/lib/util";
 
-export const dynamic = "force-dynamic";
+const KELAS_KARTU =
+    "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white";
 
-export default async function MahasiswaPage({ searchParams }) {
-    const user = await requireRole("mahasiswa");
+const KELAS_TOMBOL_AKSI =
+    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning";
+
+const KELAS_TOMBOL_SUBMIT =
+    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning";
+
+const KELAS_TABEL =
+    "w-full border-separate border-spacing-0 overflow-hidden rounded-[14px] border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5";
+
+const STATUS_AKTIF = ["Menunggu Konfirmasi", "Sedang Dipinjam"];
+const OPSI_RATING = [5, 4, 3, 2, 1];
+
+export default async function DashboardMahasiswa({ searchParams }) {
+    const sesi = await wajibPeran("Mahasiswa");
     const sp = await searchParams;
 
-    await pool.query(
-        `INSERT INTO notifications (user_id, pesan)
-         SELECT l.user_id,
-                'Pengingat: "' || b.judul || '" jatuh tempo besok (' ||
-                to_char(l.jatuh_tempo, 'DD-MM-YYYY') || ').'
-         FROM loans l
-         JOIN books b ON b.id = l.book_id
-         WHERE l.user_id = $1
-         AND l.status = 'dipinjam'
-         AND l.jatuh_tempo = CURRENT_DATE + 1
-         AND NOT EXISTS (
-             SELECT 1 FROM notifications n
-             WHERE n.user_id = l.user_id
-             AND n.pesan = 'Pengingat: "' || b.judul || '" jatuh tempo besok (' ||
-                           to_char(l.jatuh_tempo, 'DD-MM-YYYY') || ').'
-         )`,
-        [user.id]
+    await buatPengingatJatuhTempo(sesi.id);
+    const notifikasi = await ambilNotif(sesi.id);
+
+    const { rows } = await pool.query(
+        `SELECT p.*, b.judul,
+                CASE WHEN p.status = 'Sedang Dipinjam'
+                    THEN GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari
+                    ELSE p.denda_total END AS denda_saat_ini,
+                u.rating AS rating_saya, u.komentar AS komentar_saya
+        FROM peminjaman p
+        JOIN buku b ON b.id = p.buku_id
+        LEFT JOIN ulasan u ON u.peminjaman_id = p.id
+        WHERE p.pengguna_id = $1
+        ORDER BY p.id DESC`,
+        [sesi.id]
     );
 
-    const notifikasi = (
-        await pool.query(
-            `SELECT pesan, created_at
-             FROM notifications
-             WHERE user_id = $1
-             ORDER BY created_at DESC, id DESC
-             LIMIT 8`,
-            [user.id]
-        )
-    ).rows;
+    const aktif = rows.filter((p) => STATUS_AKTIF.includes(p.status));
+    const riwayat = rows.filter((p) => !STATUS_AKTIF.includes(p.status));
+    const tertunggak = rows.filter((p) => p.status_denda === "Tertunggak");
 
-    const aktif = (
-        await pool.query(
-            `SELECT l.*, b.judul,
-                CASE
-                    WHEN l.status = 'dipinjam'
-                    THEN GREATEST(CURRENT_DATE - l.jatuh_tempo, 0) * b.denda_per_hari
-                    ELSE 0
-                END AS denda_berjalan
-             FROM loans l
-             JOIN books b ON b.id = l.book_id
-             WHERE l.user_id = $1
-             AND l.status IN ('menunggu', 'dipinjam')
-             ORDER BY l.created_at DESC`,
-            [user.id]
-        )
-    ).rows;
-
-    const reservasi = (
-        await pool.query(
-            `SELECT r.id, r.status, r.book_id, b.judul,
-                (
-                    SELECT COUNT(*)
-                    FROM reservations r2
-                    WHERE r2.book_id = r.book_id
-                    AND r2.status = 'antre'
-                    AND r2.created_at <= r.created_at
-                )::int AS posisi
-             FROM reservations r
-             JOIN books b ON b.id = r.book_id
-             WHERE r.user_id = $1
-             AND r.status IN ('antre', 'diberitahu')
-             ORDER BY r.created_at`,
-            [user.id]
-        )
-    ).rows;
-
-    const tunggakan = (
-        await pool.query(
-            `SELECT l.id, l.denda_nominal, b.judul
-             FROM loans l
-             JOIN books b ON b.id = l.book_id
-             WHERE l.user_id = $1
-             AND l.denda_status = 'tertunggak'`,
-            [user.id]
-        )
-    ).rows;
-
-    let totalTunggak = 0;
-
-    for (const t of tunggakan) {
-        totalTunggak += t.denda_nominal;
-    }
-
-    const riwayat = (
-        await pool.query(
-            `SELECT l.*, b.judul
-             FROM loans l
-             JOIN books b ON b.id = l.book_id
-             WHERE l.user_id = $1
-             AND l.status IN ('selesai', 'ditolak')
-             ORDER BY l.created_at DESC`,
-            [user.id]
-        )
-    ).rows;
+    const totalTertunggak = tertunggak.reduce(
+        (jumlah, p) => jumlah + p.denda_saat_ini,
+        0
+    );
+    const dendaBerjalan = aktif.reduce(
+        (jumlah, p) => jumlah + (p.status === "Sedang Dipinjam" ? p.denda_saat_ini : 0),
+        0
+    );
+    const sedangDiulas = riwayat.find(
+        (p) => String(p.id) === sp.ulas && p.status === "Selesai"
+    );
+    const adaNotifBelumDibaca = notifikasi.some((n) => !n.dibaca);
 
     return (
-        <div className="space-y-8">
-            <h1 className="text-2xl font-bold text-purple-900">
-                Dashboard Mahasiswa
-            </h1>
+        <>
+        <h1>Halo, {sesi.nama}</h1>
+        <Pesan sp={sp} />
 
-            <Pesan sp={sp} />
+        {(tertunggak.length > 0 || dendaBerjalan > 0) && (
+            <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-kuning bg-[repeating-linear-gradient(135deg,transparent_0_14px,rgba(11,27,77,0.07)_14px_28px)]">
+            <h2>Status Denda</h2>
 
-            {tunggakan.length > 0 && (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-                    <h2 className="font-bold text-red-700">
-                        ⚠ Denda Tertunggak: {rupiah(totalTunggak)}
-                    </h2>
-
-                    <p className="text-sm text-red-600 mb-2">
-                        Status blokir: pengajuan pinjam baru ditolak sampai denda
-                        dilunasi di meja sirkulasi.
-                    </p>
-
-                    <ul className="text-sm list-disc ml-5 text-red-800">
-                        {tunggakan.map((t) => (
-                            <li key={t.id}>
-                                {t.judul}: {rupiah(t.denda_nominal)}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+            {tertunggak.length > 0 && (
+                <p>
+                Denda tertunggak <strong>{rupiah(totalTertunggak)}</strong>.
+                Pengajuan pinjaman baru <strong>diblokir</strong> sampai petugas
+                mencatat pelunasan.
+                </p>
             )}
 
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    🔔 Notifikasi
-                </h2>
-
-                <div className="card">
-                    <ul className="divide-y divide-purple-50 text-sm">
-                        {notifikasi.map((n, i) => (
-                            <li key={i} className="py-2 flex justify-between gap-3">
-                                <span>{n.pesan}</span>
-                                <span className="text-xs text-slate-400 whitespace-nowrap">
-                                    {tgl(n.created_at)}
-                                </span>
-                            </li>
-                        ))}
-
-                        {notifikasi.length === 0 && (
-                            <li className="text-slate-500">
-                                Belum ada notifikasi.
-                            </li>
-                        )}
-                    </ul>
-                </div>
+            {dendaBerjalan > 0 && (
+                <p>
+                Denda berjalan dari buku yang terlambat:{" "}
+                <strong>{rupiah(dendaBerjalan)}</strong>.
+                </p>
+            )}
             </section>
+        )}
 
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Peminjaman Aktif
-                </h2>
+        <section className={KELAS_KARTU}>
+            <div className="flex items-baseline justify-between gap-4 mb-2.5">
+            <h2>Notifikasi</h2>
 
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Buku</th>
-                                <th>Status</th>
-                                <th>Jatuh Tempo</th>
-                                <th>Denda Berjalan</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
+            {adaNotifBelumDibaca && (
+                <form action={tandaiNotifDibaca}>
+                <button className="cursor-pointer font-bold text-biru underline">
+                    Tandai semua dibaca
+                </button>
+                </form>
+            )}
+            </div>
 
-                        <tbody>
-                            {aktif.map((l) => (
-                                <tr key={l.id}>
-                                    <td>{l.judul}</td>
-                                    <td><Badge s={l.status} /></td>
-                                    <td>{tgl(l.jatuh_tempo)}</td>
-                                    <td>
-                                        {l.denda_berjalan > 0 ? (
-                                            <span className="text-red-600">
-                                                {rupiah(l.denda_berjalan)}
-                                            </span>
-                                        ) : "-"}
-                                    </td>
-                                    <td>
-                                        {l.status === "dipinjam" &&
-                                            l.perpanjangan_status === "tidak" && (
-                                                <form action={ajukanPerpanjang}>
-                                                    <input
-                                                        type="hidden"
-                                                        name="id"
-                                                        value={l.id}
-                                                    />
-                                                    <button className="btn">
-                                                        Ajukan Perpanjangan
-                                                    </button>
-                                                </form>
-                                            )}
-
-                                        {l.status === "dipinjam" &&
-                                            l.perpanjangan_status !== "tidak" && (
-                                                <Badge s={l.perpanjangan_status} />
-                                            )}
-
-                                        {l.status === "menunggu" && (
-                                            <span className="text-xs text-slate-500">
-                                                Temui pegawai di meja sirkulasi
-                                            </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {aktif.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="text-slate-500">
-                                        Tidak ada peminjaman aktif.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+            {notifikasi.map((n) => (
+                <div
+                    key={n.id}
+                    className="grid gap-0.5 border-b-2 border-dashed border-biru-muda py-3.5"
+                >
+                    <span>
+                    {!n.dibaca && <Badge>Baru</Badge>} {n.pesan}
+                    </span>
+                    <small>{formatTanggal(n.dibuat_pada)}</small>
                 </div>
-            </section>
+            ))}
 
-            {reservasi.length > 0 && (
-                <section>
-                    <h2 className="text-lg font-bold text-purple-900 mb-2">
-                        Reservasi Buku
-                    </h2>
+            {notifikasi.length === 0 && (
+                <p className="p-5 text-center opacity-70">Belum ada notifikasi.</p>
+            )}
+        </section>
 
-                    <div className="card overflow-x-auto">
-                        <table className="tbl">
-                            <thead>
-                                <tr>
-                                    <th>Buku</th>
-                                    <th>Status</th>
-                                    <th>Antrean ke-</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
+        <section>
+            <h2 className="mb-4">Pinjaman Aktif</h2>
 
-                            <tbody>
-                                {reservasi.map((r) => (
-                                    <tr key={r.id}>
-                                        <td>
-                                            <Link
-                                                href={`/katalog/${r.book_id}`}
-                                                className="text-purple-600 hover:underline"
-                                            >
-                                                {r.judul}
-                                            </Link>
-                                        </td>
+            <div className="overflow-x-auto">
+                <table className={KELAS_TABEL}>
+                    <thead>
+                    <tr>
+                        <th>Buku</th>
+                        <th>Status</th>
+                        <th>Jatuh tempo</th>
+                        <th>Denda berjalan</th>
+                        <th>Aksi</th>
+                    </tr>
+                    </thead>
 
-                                        <td><Badge s={r.status} /></td>
-
-                                        <td>
-                                            {r.status === "antre" ? r.posisi : "-"}
-                                        </td>
-
-                                        <td>
-                                            <form action={batalReservasi}>
-                                                <input
-                                                    type="hidden"
-                                                    name="id"
-                                                    value={r.id}
-                                                />
-                                                <button className="text-red-600 hover:underline text-sm">
-                                                    Batalkan
-                                                </button>
+                    <tbody>
+                        {aktif.map((p) => (
+                            <tr key={p.id}>
+                                <td>{p.judul}</td>
+                                    <td>
+                                        <Badge>{p.status}</Badge>
+                                    </td>
+                                    <td>{formatTanggal(p.jatuh_tempo)}</td>
+                                    <td>
+                                        {p.denda_saat_ini > 0 ? rupiah(p.denda_saat_ini) : "-"}
+                                    </td>
+                                    <td>
+                                        {p.status === "Sedang Dipinjam" &&
+                                        p.status_perpanjangan === "Tidak Ada" && (
+                                            <form action={ajukanPerpanjangan}>
+                                            <input type="hidden" name="id" value={p.id} />
+                                            <button className={KELAS_TOMBOL_AKSI}>
+                                                Ajukan Perpanjangan
+                                            </button>
                                             </form>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            )}
+                                        )}
+
+                                    {p.status_perpanjangan !== "Tidak Ada" && (
+                                        <span>
+                                            Perpanjangan {p.status_perpanjangan.toLowerCase()}
+                                        </span>
+                                    )}
+
+                                    {p.status === "Menunggu Konfirmasi" && (
+                                        <small>Temui petugas sirkulasi</small>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+
+                        {aktif.length === 0 && (
+                            <tr>
+                            <td colSpan={5} className="p-5 text-center opacity-70">
+                                Belum ada pinjaman aktif.{" "}
+                                <Link
+                                href="/katalog"
+                                className="font-bold text-biru underline"
+                                >
+                                Cari buku
+                                </Link>
+                            </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {sedangDiulas && (
+            <section className={KELAS_KARTU} id="ulasan">
+                <h2 className="mb-4">Ulasan: {sedangDiulas.judul}</h2>
+
+                <form action={beriUlasan} className="grid gap-4 md:grid-cols-2">
+                    <input
+                    type="hidden"
+                    name="peminjaman_id"
+                    value={sedangDiulas.id}
+                    />
+
+                    <Field
+                    label="Rating"
+                    nama="rating"
+                    tipe="select"
+                    nilai={sedangDiulas.rating_saya ?? 5}
+                    >
+                    {OPSI_RATING.map((n) => (
+                        <option key={n} value={n}>
+                        {"★".repeat(n)} ({n})
+                        </option>
+                    ))}
+                    </Field>
+
+                    <Field
+                    label="Komentar"
+                    nama="komentar"
+                    tipe="textarea"
+                    nilai={sedangDiulas.komentar_saya}
+                    />
+
+                    <button className={`${KELAS_TOMBOL_SUBMIT} col-span-full`}>
+                        Simpan ulasan
+                    </button>
+                </form>
+            </section>
+        )}
 
             <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Riwayat Transaksi
-                </h2>
+                <h2 className="mb-4">Riwayat Transaksi</h2>
 
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
+                <div className="overflow-x-auto">
+                    <table className={KELAS_TABEL}>
                         <thead>
-                            <tr>
-                                <th>Buku</th>
-                                <th>Status</th>
-                                <th>Dikembalikan</th>
-                                <th>Denda</th>
-                                <th>Ulasan</th>
-                            </tr>
+                        <tr>
+                            <th>Buku</th>
+                            <th>Status</th>
+                            <th>Dikembalikan</th>
+                            <th>Denda</th>
+                            <th>Ulasan</th>
+                        </tr>
                         </thead>
 
                         <tbody>
-                            {riwayat.map((l) => (
-                                <tr key={l.id}>
-                                    <td>{l.judul}</td>
+                        {riwayat.map((p) => (
+                            <tr key={p.id}>
+                            <td>{p.judul}</td>
+                            <td>
+                                <Badge>{p.status}</Badge>
+                                {p.alasan_penolakan && (
+                                <small> {p.alasan_penolakan}</small>
+                                )}
+                            </td>
+                            <td>{formatTanggal(p.tanggal_kembali)}</td>
+                            <td>
+                                {p.denda_total > 0
+                                ? `${rupiah(p.denda_total)} (${p.status_denda})`
+                                : "-"}
+                            </td>
+                            <td>
+                                {p.status === "Selesai" && (
+                                <Link
+                                    href={`/mahasiswa?ulas=${p.id}#ulasan`}
+                                    className="font-bold text-biru underline"
+                                >
+                                    {p.rating_saya ? "Ubah ulasan" : "Tulis ulasan"}
+                                </Link>
+                                )}
+                            </td>
+                            </tr>
+                        ))}
 
-                                    <td>
-                                        <Badge s={l.status} />
-                                        {l.alasan_tolak && (
-                                            <p className="text-xs text-red-600 mt-1">
-                                                {l.alasan_tolak}
-                                            </p>
-                                        )}
-                                    </td>
-
-                                    <td>{tgl(l.tanggal_kembali)}</td>
-
-                                    <td>
-                                        {l.denda_status === "tidak_ada" ? (
-                                            "-"
-                                        ) : (
-                                            <>
-                                                {rupiah(l.denda_nominal)}{" "}
-                                                <Badge s={l.denda_status} />
-                                            </>
-                                        )}
-                                    </td>
-
-                                    <td>
-                                        {l.status === "selesai" && (
-                                            <Link
-                                                href={`/katalog/${l.book_id}#ulasan`}
-                                                className="text-purple-600 hover:underline"
-                                            >
-                                                Tulis ulasan
-                                            </Link>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {riwayat.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="text-slate-500">
-                                        Belum ada riwayat.
-                                    </td>
-                                </tr>
-                            )}
+                        {riwayat.length === 0 && (
+                            <tr>
+                            <td colSpan={5} className="p-5 text-center opacity-70">
+                                Belum ada riwayat.
+                            </td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                 </div>
             </section>
-        </div>
+        </>
     );
 }
