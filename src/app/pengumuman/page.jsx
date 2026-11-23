@@ -1,57 +1,26 @@
 import Link from "next/link";
 import pool from "@/lib/db";
 import { formatTanggal } from "@/lib/util";
+import Badge from "@/components/Badge";
 
-export const dynamic = "force-dynamic";
-
-export default async function DaftarPengumumanPage() {
-    const pengumuman = (
-        await pool.query(
-            `SELECT
-                id,
-                judul,
-                kategori,
-                tanggal_rilis,
-                LEFT(konten, 160) AS ringkas
-             FROM announcements
-             WHERE status = 'Published'
-             ORDER BY tanggal_rilis DESC, id DESC`
-        )
-    ).rows;
-
+export default async function DaftarPengumuman() {
+    const { rows } = await pool.query(
+        "SELECT id, judul, kategori, tanggal_rilis, LEFT(isi, 160) AS ringkasan FROM pengumuman WHERE status = 'Published' ORDER BY tanggal_rilis DESC, id DESC"
+    );
     return (
-        <div>
-            <h1 className="text-2xl font-bold text-purple-900 mb-4">
-                Pengumuman Perpustakaan
-            </h1>
-
-            <div className="grid md:grid-cols-2 gap-4">
-                {pengumuman.map((p) => (
-                    <Link
-                        key={p.id}
-                        href={`/pengumuman/${p.id}`}
-                        className="card hover:border-purple-300 hover:shadow-md transition"
-                    >
-                        <span className="text-xs text-purple-600 font-medium">
-                            {p.kategori} • {tgl(p.tanggal_rilis)}
-                        </span>
-
-                        <h2 className="font-semibold mt-1">
-                            {p.judul}
-                        </h2>
-
-                        <p className="text-sm text-slate-500 mt-1">
-                            {p.ringkas}...
-                        </p>
-                    </Link>
-                ))}
-            </div>
-
-            {pengumuman.length === 0 && (
-                <p className="text-slate-500">
-                    Belum ada pengumuman.
-            </p>
-            )}
+        <>
+        <h1>Pengumuman Perpustakaan</h1>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+            {rows.map((p) => (
+            <Link key={p.id} href={`/pengumuman/${p.id}`} className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white">
+                <Badge>{p.kategori}</Badge>
+                <h3 className="mt-2.5 mb-1">{p.judul}</h3>
+                <p>{p.ringkasan}...</p>
+                <small className="mt-1 block">{formatTanggal(p.tanggal_rilis)}</small>
+            </Link>
+            ))}
         </div>
+        {rows.length === 0 && <p className="p-5 text-center opacity-70">Belum ada pengumuman.</p>}
+        </>
     );
 }
