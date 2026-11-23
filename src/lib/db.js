@@ -20,7 +20,7 @@ pool.on("error", (error) => {
 
 export default pool;
 
-export async function dalamtransaksi(fungsiTransaksi) {
+export async function dalamTransaksi(fungsiTransaksi) {
     const koneksi = await pool.connect();
 
     try {

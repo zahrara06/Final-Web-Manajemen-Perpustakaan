@@ -49,7 +49,7 @@ export async function hapusSesi() {
     (await cookies()).delete(COOKIE_NAME);
 }
 
-export async function requireRole(...allowedRoles) {
+export async function wajibPeran(...allowedRoles) {
     const sesi = await ambilSesi();
 
     if (!sesi || !allowedRoles.includes(sesi.peran)) {

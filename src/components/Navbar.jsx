@@ -37,7 +37,7 @@ export default async function Navbar() {
                 className="flex items-center gap-2.5 font-judul text-[1.35rem] font-extrabold"
                 >
                     <span className="grid size-9 -rotate-6 place-items-center rounded-[10px] border-[2.5px] border-biru-tua bg-kuning shadow-[2px_2px_0_#0b1b4d]">
-                        L
+                        LS
                     </span>
                     LiteraSpace
                 </Link>
