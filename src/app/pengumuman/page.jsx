@@ -1,6 +1,6 @@
 import Link from "next/link";
 import pool from "@/lib/db";
-import { tgl } from "@/lib/util";
+import { formatTanggal } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
 
