@@ -1,92 +1,66 @@
 "use server";
+
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import { keluar } from "@/lib/util";
+import { wajibPeran } from "@/lib/auth";
+import { ambilTeks, ambilAngka, jalankan } from "@/lib/util";
 
-const P = "/admin/kategori";
-
-function ambil(formData) {
-    return {
-        nama: String(formData.get("nama") || "").trim(),
-        kode: String(formData.get("kode") || "").trim(),
-        deskripsi: String(formData.get("deskripsi") || "").trim(),
+function bacaKategori(formData) {
+    const data = {
+        nama: ambilTeks(formData, "nama"),
+        kode: ambilTeks(formData, "kode").toUpperCase(),
+        deskripsi: ambilTeks(formData, "deskripsi"),
     };
+
+    if (!data.nama || !data.kode) {
+        throw new Error("Nama dan kode kategori wajib diisi.");
+    }
+
+    return data;
 }
 
-export async function simpanKategori(formData) {
-    await requireRole("admin");
+export async function tambahKategori(formData) {
+    await wajibPeran("Admin");
 
-    const { nama, kode, deskripsi } = ambil(formData);
+    await jalankan("/admin/kategori", "Kategori ditambahkan.", async () => {
+        const { nama, kode, deskripsi } = bacaKategori(formData);
 
-    if (!nama || !kode) {
-        keluar(P, "error", "Nama dan kode wajib diisi.");
-    }
-
-    try {
         await pool.query(
-            `INSERT INTO categories (nama, kode, deskripsi)
-             VALUES ($1, $2, $3)`,
+            "INSERT INTO kategori (nama, kode, deskripsi) VALUES ($1, $2, $3)",
             [nama, kode, deskripsi]
         );
-    } catch (e) {
-        if (e.code === "23505") {
-            keluar(P, "error", "Nama atau kode sudah dipakai.");
-        }
-
-        throw e;
-    }
-
-    keluar(P, "ok", "Kategori ditambahkan.");
+    });
 }
 
 export async function ubahKategori(formData) {
-    await requireRole("admin");
+    await wajibPeran("Admin");
 
-    const id = Number(formData.get("id"));
-    const { nama, kode, deskripsi } = ambil(formData);
+    await jalankan("/admin/kategori", "Kategori diperbarui.", async () => {
+        const { nama, kode, deskripsi } = bacaKategori(formData);
+        const id = ambilAngka(formData, "id");
 
-    if (!nama || !kode) {
-        keluar(P, "error", "Nama dan kode wajib diisi.");
-    }
-
-    try {
         await pool.query(
-            `UPDATE categories
-             SET nama = $1, kode = $2, deskripsi = $3
-             WHERE id = $4`,
+            "UPDATE kategori SET nama = $1, kode = $2, deskripsi = $3 WHERE id = $4",
             [nama, kode, deskripsi, id]
         );
-    } catch (e) {
-        if (e.code === "23505") {
-            keluar(P, "error", "Nama atau kode sudah dipakai.");
-        }
-
-        throw e;
-    }
-
-    keluar(P, "ok", "Kategori diperbarui.");
+    });
 }
 
 export async function hapusKategori(formData) {
-    await requireRole("admin");
+    await wajibPeran("Admin");
 
-    const id = Number(formData.get("id"));
+    await jalankan("/admin/kategori", "Kategori dihapus.", async () => {
+        const id = ambilAngka(formData, "id");
+        const terpakai = await pool.query(
+            "SELECT COUNT(*)::int AS jumlah FROM buku WHERE kategori_id = $1",
+            [id]
+        );
 
-    const { rows: [c] } = await pool.query(
-        `SELECT COUNT(*)::int AS n
-         FROM books
-         WHERE category_id = $1`,
-        [id]
-    );
+        if (terpakai.rows[0].jumlah > 0) {
+            throw new Error(
+                "Kategori tidak dapat dihapus karena masih dipakai oleh buku."
+            );
+        }
 
-    if (c.n > 0) {
-        keluar(P, "error", `Masih ada ${c.n} buku pada kategori ini.`);
-    }
-
-    await pool.query(
-        "DELETE FROM categories WHERE id = $1",
-        [id]
-    );
-
-    keluar(P, "ok", "Kategori dihapus.");
+        await pool.query("DELETE FROM kategori WHERE id = $1", [id]);
+    });
 }
