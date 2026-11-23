@@ -1,35 +1,40 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import pool from "@/lib/db";
 import { formatTanggal } from "@/lib/util";
 import Badge from "@/components/Badge";
 
-export default async function DetailPengumuman({ params }) {
-    const { id } = await params;
-
-    if (!/^\d+$/.test(id)) notFound();
-
+export default async function DaftarPengumuman() {
     const { rows } = await pool.query(
-        "SELECT * FROM pengumuman WHERE id = $1 AND status = 'Published'",
-        [id]
+        `SELECT id, judul, kategori, tanggal_rilis, LEFT(isi, 160) AS ringkasan
+        FROM pengumuman
+        WHERE status = 'Published'
+        ORDER BY tanggal_rilis DESC, id DESC`
     );
 
-    const pengumuman = rows[0];
-
-    if (!pengumuman) notFound();
-
     return (
-        <article className="block max-w-[760px] rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
-        <Badge>{pengumuman.kategori}</Badge>
+        <>
+        <h1>Pengumuman Perpustakaan</h1>
 
-        <h1 className="mt-3 mb-1.5">{pengumuman.judul}</h1>
-        <small>Dirilis {formatTanggal(pengumuman.tanggal_rilis)}</small>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+            {rows.map((p) => (
+            <Link
+                key={p.id}
+                href={`/pengumuman/${p.id}`}
+                className="block rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras"
+            >
+                <Badge>{p.kategori}</Badge>
 
-        <p className="mt-5 mb-6 whitespace-pre-line">{pengumuman.isi}</p>
+                <h3 className="mt-2.5 mb-1">{p.judul}</h3>
+                <p>{p.ringkasan}...</p>
 
-        <Link href="/pengumuman" className="font-bold text-biru underline">
-            Kembali ke daftar pengumuman
-        </Link>
-        </article>
+                <small className="mt-1 block">{formatTanggal(p.tanggal_rilis)}</small>
+            </Link>
+            ))}
+        </div>
+
+        {rows.length === 0 && (
+            <p className="p-5 text-center opacity-70">Belum ada pengumuman.</p>
+        )}
+        </>
     );
 }
