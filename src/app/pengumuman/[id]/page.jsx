@@ -1,44 +1,35 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import pool from "@/lib/db";
-import { tgl } from "@/lib/util";
+import { formatTanggal } from "@/lib/util";
+import Badge from "@/components/Badge";
 
-export const dynamic = "force-dynamic";
-
-export default async function DetailPengumumanPage({ params }) {
+export default async function DetailPengumuman({ params }) {
     const { id } = await params;
 
-    if (!Number.isInteger(Number(id))) {
-        notFound();
-    }
+    if (!/^\d+$/.test(id)) notFound();
 
-    const { rows: [a] } = await pool.query(
-        `SELECT * FROM announcements
-         WHERE id = $1 AND status = 'Published'`,
+    const { rows } = await pool.query(
+        "SELECT * FROM pengumuman WHERE id = $1 AND status = 'Published'",
         [id]
     );
 
-    if (!a) {
-        notFound();
-    }
+    const pengumuman = rows[0];
+
+    if (!pengumuman) notFound();
 
     return (
-        <article className="max-w-2xl mx-auto card p-6">
-            <span className="text-xs text-purple-600 font-medium">
-                {a.kategori} • {tgl(a.tanggal_rilis)}
-            </span>
+        <article className="block max-w-[760px] rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras">
+        <Badge>{pengumuman.kategori}</Badge>
 
-            <h1 className="text-2xl font-bold text-purple-900 mt-1 mb-4">
-                {a.judul}
-            </h1>
+        <h1 className="mt-3 mb-1.5">{pengumuman.judul}</h1>
+        <small>Dirilis {formatTanggal(pengumuman.tanggal_rilis)}</small>
 
-            <p className="whitespace-pre-line leading-relaxed text-slate-700">
-                {a.konten}
-            </p>
+        <p className="mt-5 mb-6 whitespace-pre-line">{pengumuman.isi}</p>
 
-            <Link href="/pengumuman" className="btn-sec mt-6">
-                ← Kembali
-            </Link>
+        <Link href="/pengumuman" className="font-bold text-biru underline">
+            Kembali ke daftar pengumuman
+        </Link>
         </article>
     );
 }
