@@ -1,381 +1,335 @@
-
 import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import Pesan from "@/components/Pesan";
+import { wajibPeran } from "@/lib/auth";
+import { rupiah, formatTanggal } from "@/lib/util";
 import {
-    putusPinjam,
-    kembalikanBuku,
-    lunasiDenda,
-    putusPerpanjang
+    setujuiPinjam,
+    tolakPinjam,
+    konfirmasiKembali,
+    catatDendaLunas,
+    putuskanPerpanjangan,
 } from "@/app/actions/loans";
-import { rupiah, tgl } from "@/lib/util";
+import Pesan from "@/components/Pesan";
 
-export const dynamic = "force-dynamic";
+const KELAS_KARTU_TAUTAN =
+    "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white font-bold";
 
-export default async function PegawaiPage({ searchParams }) {
-    await requireRole("pegawai", "admin");
+const KELAS_TOMBOL_AKSI =
+    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning";
 
+const KELAS_TOMBOL_SUBMIT =
+    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning";
+
+const KELAS_TABEL =
+    "w-full border-separate border-spacing-0 overflow-hidden rounded-[14px] border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5";
+
+const DASAR_QUERY = `
+    FROM peminjaman p
+    JOIN pengguna u ON u.id = p.pengguna_id
+    JOIN buku b ON b.id = p.buku_id`;
+
+export default async function DashboardPegawai({ searchParams }) {
+    await wajibPeran("Pegawai", "Admin");
     const sp = await searchParams;
-    const q = (sp.q || "").trim();
+    const kata = (sp.q ?? "").trim();
 
-    const antrean = (
-        await pool.query(
-            `SELECT l.id, u.nama, u.nomor_identitas, b.judul, b.stok_tersedia
-             FROM loans l
-             JOIN users u ON u.id = l.user_id
-             JOIN books b ON b.id = l.book_id
-             WHERE l.status = 'menunggu'
-             ORDER BY l.created_at`
-        )
-    ).rows;
+    const [antrean, perpanjangan, sirkulasi, denda] = await Promise.all([
+        pool.query(
+            `SELECT p.id, p.tanggal_ajuan, u.nama_lengkap, u.nomor_identitas, b.judul, b.stok_tersedia
+            ${DASAR_QUERY}
+            WHERE p.status = 'Menunggu Konfirmasi'
+            ORDER BY p.id`
+        ),
+        pool.query(
+            `SELECT p.id, p.jatuh_tempo, u.nama_lengkap, b.judul, b.durasi_pinjam_hari
+            ${DASAR_QUERY}
+            WHERE p.status_perpanjangan = 'Diajukan'
+            ORDER BY p.id`
+        ),
+        pool.query(
+            `SELECT p.id, p.jatuh_tempo, u.nama_lengkap, u.nomor_identitas, b.judul,
+                    GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari AS denda_berjalan
+            ${DASAR_QUERY}
+            WHERE p.status = 'Sedang Dipinjam'
+                AND ($1::text = ''
+                    OR u.nama_lengkap ILIKE '%' || $1 || '%'
+                    OR u.nomor_identitas ILIKE '%' || $1 || '%'
+                    OR b.judul ILIKE '%' || $1 || '%')
+            ORDER BY p.jatuh_tempo`,
+            [kata]
+        ),
+        pool.query(
+            `SELECT p.id, p.denda_total, u.nama_lengkap, u.nomor_identitas, b.judul
+            ${DASAR_QUERY}
+            WHERE p.status_denda = 'Tertunggak'
+            ORDER BY p.id`
+        ),
+    ]);
 
-    const perpanjangan = (
-        await pool.query(
-            `SELECT l.id, u.nama, b.judul, l.jatuh_tempo
-             FROM loans l
-             JOIN users u ON u.id = l.user_id
-             JOIN books b ON b.id = l.book_id
-             WHERE l.perpanjangan_status = 'diajukan'
-             ORDER BY l.id`
-        )
-    ).rows;
+  return (
+    <>
+        <h1>Meja Sirkulasi</h1>
+        <Pesan sp={sp} />
 
-    const pengembalian = (
-        await pool.query(
-            `SELECT l.id, u.nama, u.nomor_identitas, b.judul,
-                    l.jatuh_tempo,
-                    GREATEST(CURRENT_DATE - l.jatuh_tempo, 0) * b.denda_per_hari AS denda_berjalan
-             FROM loans l
-             JOIN users u ON u.id = l.user_id
-             JOIN books b ON b.id = l.book_id
-             WHERE l.status = 'dipinjam'
-             AND (
-                 $1 = ''
-                 OR u.nama ILIKE '%' || $1 || '%'
-                 OR u.nomor_identitas ILIKE '%' || $1 || '%'
-                 OR b.judul ILIKE '%' || $1 || '%'
-             )
-             ORDER BY l.jatuh_tempo`,
-            [q]
-        )
-    ).rows;
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
+            <Link href="/kelola/buku" className={KELAS_KARTU_TAUTAN}>
+                Kelola Buku
+                <span className="mt-0.5 block text-sm font-normal opacity-75">
+                    Tambah, ubah, hapus koleksi dan stok
+                </span>
+            </Link>
 
-    const tunggakan = (
-        await pool.query(
-            `SELECT l.id, u.nama, u.nomor_identitas,
-                    b.judul, l.denda_nominal
-             FROM loans l
-             JOIN users u ON u.id = l.user_id
-             JOIN books b ON b.id = l.book_id
-             WHERE l.denda_status = 'tertunggak'
-             ORDER BY l.id`
-        )
-    ).rows;
-
-    return (
-        <div className="space-y-8">
-            <div className="flex flex-wrap items-center gap-3 justify-between">
-                <h1 className="text-2xl font-bold text-purple-900">
-                    Dashboard Pegawai
-                </h1>
-
-                <div className="flex gap-2">
-                    <Link href="/kelola/buku" className="btn-sec">
-                        Kelola Buku
-                    </Link>
-
-                    <Link href="/kelola/pengumuman" className="btn-sec">
-                        Kelola Pengumuman
-                    </Link>
-                </div>
-            </div>
-
-            <Pesan sp={sp} />
-
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Antrean Verifikasi Peminjaman
-                </h2>
-
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Mahasiswa</th>
-                                <th>Buku</th>
-                                <th>Stok</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {antrean.map((l) => (
-                                <tr key={l.id}>
-                                    <td>
-                                        {l.nama}
-                                        <br />
-                                        <span className="text-xs text-slate-500">
-                                            {l.nomor_identitas}
-                                        </span>
-                                    </td>
-
-                                    <td>{l.judul}</td>
-                                    <td>{l.stok_tersedia}</td>
-
-                                    <td>
-                                        <form
-                                            action={putusPinjam}
-                                            className="flex flex-wrap gap-2 items-center"
-                                        >
-                                            <input
-                                                type="hidden"
-                                                name="id"
-                                                value={l.id}
-                                            />
-
-                                            <input
-                                                name="alasan"
-                                                placeholder="Alasan jika ditolak"
-                                                className="inp sm:w-44"
-                                            />
-
-                                            <button
-                                                name="aksi"
-                                                value="setuju"
-                                                className="btn"
-                                            >
-                                                Setujui
-                                            </button>
-
-                                            <button
-                                                name="aksi"
-                                                value="tolak"
-                                                className="btn-red"
-                                            >
-                                                Tolak
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {antrean.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="text-slate-500">
-                                        Tidak ada antrean.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Pengajuan Perpanjangan
-                </h2>
-
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Mahasiswa</th>
-                                <th>Buku</th>
-                                <th>Jatuh Tempo</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {perpanjangan.map((l) => (
-                                <tr key={l.id}>
-                                    <td>{l.nama}</td>
-                                    <td>{l.judul}</td>
-                                    <td>{tgl(l.jatuh_tempo)}</td>
-
-                                    <td>
-                                        <form
-                                            action={putusPerpanjang}
-                                            className="flex gap-2"
-                                        >
-                                            <input
-                                                type="hidden"
-                                                name="id"
-                                                value={l.id}
-                                            />
-
-                                            <button
-                                                name="aksi"
-                                                value="setuju"
-                                                className="btn"
-                                            >
-                                                Setujui
-                                            </button>
-
-                                            <button
-                                                name="aksi"
-                                                value="tolak"
-                                                className="btn-red"
-                                            >
-                                                Tolak
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {perpanjangan.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="text-slate-500">
-                                        Tidak ada pengajuan.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Pengembalian Buku
-                </h2>
-
-                <form className="flex gap-2 mb-3">
-                    <input
-                        name="q"
-                        defaultValue={q}
-                        placeholder="Cari nama / NIM / judul buku"
-                        className="inp"
-                    />
-
-                    <button className="btn">
-                        Cari
-                    </button>
-                </form>
-
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Mahasiswa</th>
-                                <th>Buku</th>
-                                <th>Jatuh Tempo</th>
-                                <th>Denda Saat Ini</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {pengembalian.map((l) => (
-                                <tr key={l.id}>
-                                    <td>
-                                        {l.nama}
-                                        <br />
-                                        <span className="text-xs text-slate-500">
-                                            {l.nomor_identitas}
-                                        </span>
-                                    </td>
-
-                                    <td>{l.judul}</td>
-                                    <td>{tgl(l.jatuh_tempo)}</td>
-
-                                    <td>
-                                        {l.denda_berjalan > 0 ? (
-                                            <span className="text-red-600">
-                                                {rupiah(l.denda_berjalan)}
-                                            </span>
-                                        ) : "-"}
-                                    </td>
-
-                                    <td>
-                                        <form action={kembalikanBuku}>
-                                            <input
-                                                type="hidden"
-                                                name="id"
-                                                value={l.id}
-                                            />
-
-                                            <button className="btn">
-                                                Konfirmasi Kembali
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {pengembalian.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="text-slate-500">
-                                        Tidak ada transaksi aktif.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-lg font-bold text-purple-900 mb-2">
-                    Denda Tertunggak
-                </h2>
-
-                <div className="card overflow-x-auto">
-                    <table className="tbl">
-                        <thead>
-                            <tr>
-                                <th>Mahasiswa</th>
-                                <th>Buku</th>
-                                <th>Nominal</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {tunggakan.map((l) => (
-                                <tr key={l.id}>
-                                    <td>
-                                        {l.nama}
-                                        <br />
-                                        <span className="text-xs text-slate-500">
-                                            {l.nomor_identitas}
-                                        </span>
-                                    </td>
-
-                                    <td>{l.judul}</td>
-                                    <td>{rupiah(l.denda_nominal)}</td>
-
-                                    <td>
-                                        <form action={lunasiDenda}>
-                                            <input
-                                                type="hidden"
-                                                name="id"
-                                                value={l.id}
-                                            />
-
-                                            <button className="btn">
-                                                Tandai Lunas
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {tunggakan.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="text-slate-500">
-                                        Tidak ada denda tertunggak.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
+            <Link href="/kelola/pengumuman" className={KELAS_KARTU_TAUTAN}>
+                Kelola Pengumuman
+                <span className="mt-0.5 block text-sm font-normal opacity-75">
+                    Jadwal layanan dan agenda perpustakaan
+                </span>
+            </Link>
         </div>
+
+        <section>
+            <h2 className="mb-4">Antrean Peminjaman ({antrean.rowCount})</h2>
+
+            <div className="overflow-x-auto">
+                <table className={KELAS_TABEL}>
+                    <thead>
+                        <tr>
+                            <th>Mahasiswa</th>
+                            <th>Buku</th>
+                            <th>Stok</th>
+                            <th>Diajukan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {antrean.rows.map((p) => (
+                        <tr key={p.id}>
+                            <td>
+                                {p.nama_lengkap}
+                                <br />
+                                <small>{p.nomor_identitas}</small>
+                            </td>
+                            <td>{p.judul}</td>
+                            <td>{p.stok_tersedia}</td>
+                            <td>{formatTanggal(p.tanggal_ajuan)}</td>
+                            <td>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <TombolBaris
+                                        aksi={setujuiPinjam}
+                                        id={p.id}
+                                        label="Setujui"
+                                    />
+
+                                    <form action={tolakPinjam}>
+                                        <input type="hidden" name="id" value={p.id} />
+                                        <input
+                                            name="alasan"
+                                            placeholder="Alasan penolakan"
+                                            required
+                                            className="min-w-[180px] py-1 text-sm"
+                                        />
+                                        <button className="cursor-pointer font-bold text-red-700 underline">
+                                            Tolak
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+
+                    {antrean.rowCount === 0 && (
+                        <tr>
+                        <td colSpan={5} className="p-5 text-center opacity-70">
+                            Tidak ada permohonan menunggu.
+                        </td>
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2 className="mb-4">Pengajuan Perpanjangan ({perpanjangan.rowCount})</h2>
+
+            <div className="overflow-x-auto">
+                <table className={KELAS_TABEL}>
+                    <thead>
+                        <tr>
+                            <th>Mahasiswa</th>
+                            <th>Buku</th>
+                            <th>Jatuh tempo</th>
+                            <th>Tambahan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {perpanjangan.rows.map((p) => (
+                            <tr key={p.id}>
+                            <td>{p.nama_lengkap}</td>
+                            <td>{p.judul}</td>
+                            <td>{formatTanggal(p.jatuh_tempo)}</td>
+                            <td>+{p.durasi_pinjam_hari} hari</td>
+                            <td>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <TombolBaris
+                                        aksi={putuskanPerpanjangan}
+                                        id={p.id}
+                                        nilai="setuju"
+                                        label="Setujui"
+                                    />
+                                    <TombolBaris
+                                        aksi={putuskanPerpanjangan}
+                                        id={p.id}
+                                        nilai="tolak"
+                                        label="Tolak"
+                                        kelas="cursor-pointer font-bold text-red-700 underline"
+                                    />
+                                </div>
+                            </td>
+                            </tr>
+                        ))}
+
+                        {perpanjangan.rowCount === 0 && (
+                            <tr>
+                            <td colSpan={5} className="p-5 text-center opacity-70">
+                                Tidak ada pengajuan perpanjangan.
+                            </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2 className="mb-4">Pengembalian Buku</h2>
+
+            <form className="flex flex-wrap items-center gap-3 [&_input]:w-auto [&_input]:min-w-[150px] [&_input]:flex-1 [&_select]:w-auto [&_select]:min-w-[150px] [&_select]:flex-1 mb-4">
+            <input
+                name="q"
+                defaultValue={kata}
+                placeholder="Cari nama, NIM, atau judul buku"
+                aria-label="Cari transaksi aktif"
+            />
+            <button className={KELAS_TOMBOL_SUBMIT}>Cari</button>
+            </form>
+
+            <div className="overflow-x-auto">
+                <table className={KELAS_TABEL}>
+                    <thead>
+                        <tr>
+                            <th>Mahasiswa</th>
+                            <th>Buku</th>
+                            <th>Jatuh tempo</th>
+                            <th>Denda berjalan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {sirkulasi.rows.map((p) => (
+                            <tr key={p.id}>
+                            <td>
+                                {p.nama_lengkap}
+                                <br />
+                                <small>{p.nomor_identitas}</small>
+                            </td>
+                            <td>{p.judul}</td>
+                            <td>{formatTanggal(p.jatuh_tempo)}</td>
+                            <td>
+                                {p.denda_berjalan > 0 ? rupiah(p.denda_berjalan) : "-"}
+                            </td>
+                            <td>
+                                <TombolBaris
+                                aksi={konfirmasiKembali}
+                                id={p.id}
+                                label="Konfirmasi Kembali"
+                                />
+                            </td>
+                            </tr>
+                        ))}
+
+                        {sirkulasi.rowCount === 0 && (
+                            <tr>
+                            <td colSpan={5} className="p-5 text-center opacity-70">
+                                Tidak ada transaksi aktif yang cocok.
+                            </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2 className="mb-4">Denda Tertunggak ({denda.rowCount})</h2>
+
+            <div className="overflow-x-auto">
+                <table className={KELAS_TABEL}>
+                    <thead>
+                        <tr>
+                            <th>Mahasiswa</th>
+                            <th>Buku</th>
+                            <th>Denda</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {denda.rows.map((p) => (
+                            <tr key={p.id}>
+                            <td>
+                                {p.nama_lengkap}
+                                <br />
+                                <small>{p.nomor_identitas}</small>
+                            </td>
+                            <td>{p.judul}</td>
+                            <td>{rupiah(p.denda_total)}</td>
+                            <td>
+                                <TombolBaris
+                                aksi={catatDendaLunas}
+                                id={p.id}
+                                label="Catat Lunas"
+                                />
+                            </td>
+                            </tr>
+                        ))}
+
+                        {denda.rowCount === 0 && (
+                            <tr>
+                            <td colSpan={4} className="p-5 text-center opacity-70">
+                                Tidak ada denda tertunggak.
+                            </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        </>
+    );
+}
+
+function TombolBaris({
+    aksi,
+    id,
+    label,
+    nilai,
+    kelas = KELAS_TOMBOL_AKSI,
+}) {
+    return (
+        <form action={aksi}>
+        <input type="hidden" name="id" value={id} />
+        <button
+            className={kelas}
+            name={nilai ? "keputusan" : undefined}
+            value={nilai}
+        >
+            {label}
+        </button>
+        </form>
     );
 }
