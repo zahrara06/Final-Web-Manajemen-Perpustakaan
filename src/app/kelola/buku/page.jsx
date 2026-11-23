@@ -41,42 +41,43 @@ export default async function KelolaBuku({ searchParams }) {
 
             <div className="overflow-x-auto">
                 <table className={KELAS_TABEL}>
-                <thead>
-                    <tr>
-                    <th>Judul</th>
-                    <th>Penulis</th>
-                    <th>Kategori</th>
-                    <th>Stok (tersedia/total)</th>
-                    <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {daftarBuku.map((b) => (
-                    <tr key={b.id}>
-                        <td>{b.judul}</td>
-                        <td>{b.penulis}</td>
-                        <td>{b.nama_kategori}</td>
-                        <td>
-                        {b.stok_tersedia} / {b.stok_total}
-                        </td>
-                        <td>
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <Link
-                            href={`/kelola/buku/${b.id}`}
-                            className="font-bold text-biru underline"
-                            >
-                            Edit
-                            </Link>
-                            <TombolHapus
-                            aksi={hapusBuku}
-                            id={b.id}
-                            pesan={`Hapus buku "${b.judul}"?`}
-                            />
-                        </div>
-                        </td>
-                    </tr>
-                    ))}
-                </tbody>
+                    <thead>
+                        <tr>
+                        <th>Judul</th>
+                        <th>Penulis</th>
+                        <th>Kategori</th>
+                        <th>Stok (tersedia/total)</th>
+                        <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    
+                    <tbody>
+                        {daftarBuku.map((b) => (
+                        <tr key={b.id}>
+                            <td>{b.judul}</td>
+                            <td>{b.penulis}</td>
+                            <td>{b.nama_kategori}</td>
+                            <td>
+                            {b.stok_tersedia} / {b.stok_total}
+                            </td>
+                            <td>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <Link
+                                    href={`/kelola/buku/${b.id}`}
+                                    className="font-bold text-biru underline"
+                                    >
+                                    Edit
+                                    </Link>
+                                    <TombolHapus
+                                    aksi={hapusBuku}
+                                    id={b.id}
+                                    pesan={`Hapus buku "${b.judul}"?`}
+                                    />
+                                </div>
+                            </td>
+                        </tr>
+                        ))}
+                    </tbody>
                 </table>
             </div>
         </>
