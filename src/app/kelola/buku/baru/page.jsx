@@ -1,28 +1,31 @@
+import Link from "next/link";
 import pool from "@/lib/db";
-import { requireRole } from "@/lib/auth";
-import FormBuku from "@/components/FormBuku";
-import Pesan from "@/components/Pesan";
-import { simpanBuku } from "@/app/actions/books";
+import { wajibPeran } from "@/lib/auth";
+import { tambahBuku } from "@/app/actions/books";
+import BookForm from "@/components/BookForm";
 
-export default async function BukuBaruPage({ searchParams }) {
-    await requireRole("pegawai", "admin");
+export default async function TambahBuku() {
+    await wajibPeran("Pegawai", "Admin");
 
-    const sp = await searchParams;
-    const kategori = (
-        await pool.query(
-            "SELECT id, nama FROM categories ORDER BY nama"
-        )
-    ).rows;
+    const { rows: daftarKategori } = await pool.query(
+        "SELECT id, nama FROM kategori ORDER BY nama"
+    );
 
     return (
-        <div className="max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold text-purple-900 mb-4">
-                Tambah Buku
-            </h1>
+        <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white max-w-[760px]">
+            <h1 className="text-[2rem] mb-4">Tambah Buku</h1>
 
-            <Pesan sp={sp} />
+            <BookForm
+                aksi={tambahBuku}
+                daftarKategori={daftarKategori}
+                untukBaru
+            />
 
-            <FormBuku action={simpanBuku} kategori={kategori} />
-        </div>
+            <p className="mt-4">
+                <Link href="/kelola/buku" className="font-bold text-biru underline">
+                Batal dan kembali
+                </Link>
+            </p>
+        </section>
     );
 }
