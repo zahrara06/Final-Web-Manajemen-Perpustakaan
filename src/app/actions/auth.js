@@ -1,8 +1,9 @@
 "use server";
 
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import pool from "@/lib/db";
+import pool, { dalamTransaksi } from "@/lib/db";
 import { buatSesi, hapusSesi } from "@/lib/auth";
 import { ambilTeks, alihkan } from "@/lib/util";
 
@@ -95,4 +96,42 @@ export async function daftar(formData) {
 export async function keluar() {
     await hapusSesi();
     redirect("/");
+}
+
+export async function lupaPassword(formData) {
+    const email = ambilTeks(formData, "email").toLowerCase();
+    const nomorIdentitas = ambilTeks(formData, "nomor_identitas");
+    const baru = String(formData.get("kata_sandi") ?? "");
+    const ulang = String(formData.get("ulangi") ?? "");
+
+    if (!email || !nomorIdentitas || !baru) {
+        alihkan("/lupa-password", "Semua data wajib diisi.", "error");
+    }
+
+    if (baru.length < 6) {
+        alihkan("/lupa-password", "Kata sandi minimal 6 karakter.", "error");
+    }
+
+    if (baru !== ulang) {
+        alihkan("/lupa-password", "Konfirmasi kata sandi tidak sama.", "error");
+    }
+
+    const hasil = await pool.query(
+        `UPDATE pengguna
+         SET kata_sandi_hash = $1
+         WHERE email = $2
+           AND nomor_identitas = $3
+           AND aktif = TRUE`,
+        [await bcrypt.hash(baru, 10), email, nomorIdentitas]
+    );
+
+    if (hasil.rowCount === 0) {
+        alihkan(
+            "/lupa-password",
+            "Email dan nomor identitas tidak cocok dengan akun mana pun.",
+            "error"
+        );
+    }
+
+    alihkan("/login", "Kata sandi berhasil diubah. Silakan masuk.");
 }
