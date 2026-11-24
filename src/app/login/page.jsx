@@ -29,11 +29,11 @@ export default async function HalamanLogin({ searchParams }) {
                 <Link href="/katalog" className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-white">
                     Lanjut sebagai Tamu
                 </Link>
-                <Link href="/lupa-password" className="font-bold text-biru underline">
+                <Link href="/lupa-password" className="font-bold text-sm underline">
                     Lupa kata sandi?
                 </Link>
                 <p className="text-sm opacity-80">Belum punya akun?
-                    <Link href="/register"><u>Daftar sebagai Mahasiswa</u></Link>
+                    <Link href="/register"><u> Daftar sebagai Mahasiswa</u></Link>
                 </p>
                 </form>
             </div>

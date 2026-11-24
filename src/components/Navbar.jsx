@@ -65,7 +65,7 @@ export default async function Navbar() {
                         href="/login"
                         className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning"
                         >
-                        Masuk
+                        Login
                         </Link>
                     )}
                 </div>

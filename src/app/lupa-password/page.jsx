@@ -9,7 +9,7 @@ export default async function LupaPassword({ searchParams }) {
     const sp = await searchParams;
 
     return (
-        <section className="mx-auto grid max-w-md gap-4">
+        <section className="mx-auto grid max-w-ms gap-4">
             <h1>Lupa Kata Sandi</h1>
             <Pesan sp={sp} />
 
