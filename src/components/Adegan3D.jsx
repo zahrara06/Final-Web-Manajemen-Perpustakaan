@@ -20,7 +20,7 @@ function Buku({ buku }) {
             <boxGeometry args={[panjang, tebal, lebar]} />
             <meshStandardMaterial color={buku.warna} roughness={0.4} />
         </mesh>
-        {/* Lembar halaman yang sedikit menonjol di sisi depan dan belakang */}
+
         <mesh position={[0.06, 0, 0]}>
             <boxGeometry args={[panjang - 0.1, tebal - 0.1, lebar + 0.08]} />
             <meshStandardMaterial color="#f6f1dc" roughness={0.9} />
@@ -33,7 +33,6 @@ function Tumpukan() {
     const kelompok = useRef();
     useFrame((keadaan, selang) => {
         kelompok.current.rotation.y += selang * 0.35;
-        // Tumpukan sedikit miring mengikuti arah kursor
         kelompok.current.rotation.x += (keadaan.pointer.y * 0.25 - kelompok.current.rotation.x) * 0.05;
     });
     return (
@@ -87,3 +86,4 @@ export default function Adegan3D() {
         </Canvas>
     );
 }
+
