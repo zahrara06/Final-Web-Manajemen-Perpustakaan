@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ambilSesi } from "@/lib/auth";
 import { keluar } from "@/app/actions/auth";
 import NavLink from "@/components/NavLink";
+import pool from "@/lib/db";
+import Avatar from "@/components/Avatar";
 
 const MENU_UMUM = [
     { href: "/", nama: "Beranda" },
@@ -12,8 +14,8 @@ const MENU_UMUM = [
 const MENU_PERAN = {
     Admin: [
         { href: "/admin", nama: "Dashboard Admin" },
-        { href: "/kelola/buku", nama: "Buku" },
-        { href: "/kelola/pengumuman", nama: "Info" },
+        { href: "/kelola/buku", nama: "Kelola Buku" },
+        { href: "/kelola/pengumuman", nama: "Kelola Pengumuman" },
     ],
     Pegawai: [
         { href: "/pegawai", nama: "Sirkulasi" },
@@ -28,6 +30,14 @@ const MENU_PERAN = {
 export default async function Navbar() {
     const sesi = await ambilSesi();
     const menu = [...MENU_UMUM, ...(sesi ? MENU_PERAN[sesi.peran] : [])];
+    const profil = sesi
+    ? (
+          await pool.query(
+              "SELECT nama_lengkap, foto IS NOT NULL AS ada_foto FROM pengguna WHERE id = $1",
+              [sesi.id]
+          )
+      ).rows[0]
+    : null;
 
     return (
         <header className="sticky top-0 z-20 border-b-[2.5px] border-biru-tua bg-white">
@@ -53,9 +63,20 @@ export default async function Navbar() {
                 <div className="[&_form]:flex [&_form]:items-center [&_form]:gap-3">
                     {sesi ? (
                         <form action={keluar}>
-                            <span className="text-sm font-semibold">
-                                {sesi.nama} ({sesi.peran})
-                            </span>
+                            <Link
+                                href="/profil"
+                                className="flex items-center gap-2 text-sm font-semibold hover:underline"
+                            >
+                                <Avatar
+                                    id={sesi.id}
+                                    nama={profil?.nama_lengkap ?? sesi.nama}
+                                    adaFoto={profil?.ada_foto}
+                                />
+                                <span>
+                                    {profil?.nama_lengkap ?? sesi.nama} ({sesi.peran})
+                                </span>
+                            </Link>
+                            
                             <button className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-white">
                                 Keluar
                             </button>
