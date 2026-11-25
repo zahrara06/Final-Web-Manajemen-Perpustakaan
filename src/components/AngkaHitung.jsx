@@ -11,7 +11,7 @@ export default function AngkaHitung({ nilai, rupiah = false, durasi = 1200 }) {
         ).matches;
 
         if (kurangiGerak) {
-            setTampil(nilai);
+            id = requestAnimationFrame(() => setTampil(nilai));
             return;
         }
 

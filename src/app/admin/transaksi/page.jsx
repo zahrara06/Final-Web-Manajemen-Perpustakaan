@@ -1,10 +1,31 @@
+import Link from "next/link";
 import pool from "@/lib/db";
 import Badge from "@/components/Badge";
 import { wajibPeran } from "@/lib/auth";
 import { rupiah, formatTanggal } from "@/lib/util";
 
-export default async function MonitoringTransaksi() {
+const BATAS_PER_HALAMAN = 50;
+
+export default async function MonitoringTransaksi({ searchParams }) {
     await wajibPeran("Admin");
+    const sp = await searchParams;
+
+    const { rows: jumlahRows } = await pool.query(
+        "SELECT COUNT(*) AS total FROM peminjaman"
+    );
+    const totalTransaksi = Number(jumlahRows[0].total);
+    const jumlahHalaman = Math.max(
+        1,
+        Math.ceil(totalTransaksi / BATAS_PER_HALAMAN)
+    );
+    const parameterHalaman = Array.isArray(sp?.halaman)
+        ? sp.halaman[0]
+        : sp?.halaman;
+    const halamanDiminta = Number.parseInt(parameterHalaman ?? "1", 10);
+    const halaman =
+        Number.isInteger(halamanDiminta) && halamanDiminta > 0
+            ? Math.min(halamanDiminta, jumlahHalaman)
+            : 1;
 
     const { rows: transaksi } = await pool.query(
         `SELECT p.id, p.status, p.tanggal_pinjam, p.jatuh_tempo, p.tanggal_kembali,
@@ -16,8 +37,12 @@ export default async function MonitoringTransaksi() {
          FROM peminjaman p
          JOIN pengguna u ON u.id = p.pengguna_id
          JOIN buku b ON b.id = p.buku_id
-         ORDER BY p.id DESC LIMIT 200`
+         ORDER BY p.id DESC
+         LIMIT $1 OFFSET $2`,
+        [BATAS_PER_HALAMAN, (halaman - 1) * BATAS_PER_HALAMAN]
     );
+    const awal = totalTransaksi === 0 ? 0 : (halaman - 1) * BATAS_PER_HALAMAN + 1;
+    const akhir = Math.min(halaman * BATAS_PER_HALAMAN, totalTransaksi);
 
     return (
         <>
@@ -77,8 +102,45 @@ export default async function MonitoringTransaksi() {
                                 </td>
                             </tr>
                         ))}
+
+                        {transaksi.length === 0 && (
+                            <tr>
+                                <td colSpan={9} className="p-5 text-center opacity-70">
+                                    Belum ada riwayat transaksi.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                {jumlahHalaman > 1 && (
+                    <nav
+                        aria-label="Navigasi riwayat transaksi"
+                        className="flex items-center gap-3"
+                    >
+                        {halaman > 1 && (
+                            <Link
+                                href={`/admin/transaksi?halaman=${halaman - 1}`}
+                                className="font-bold text-biru underline"
+                            >
+                                Sebelumnya
+                            </Link>
+                        )}
+                        <span className="text-sm">
+                            Halaman {halaman} dari {jumlahHalaman}
+                        </span>
+                        {halaman < jumlahHalaman && (
+                            <Link
+                                href={`/admin/transaksi?halaman=${halaman + 1}`}
+                                className="font-bold text-biru underline"
+                            >
+                                Berikutnya
+                            </Link>
+                        )}
+                    </nav>
+                )}
             </div>
         </>
     );

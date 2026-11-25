@@ -276,7 +276,7 @@ export default async function DashboardPegawai({ searchParams }) {
                                     <TombolBaris
                                         aksi={konfirmasiPengembalian}
                                         id={p.id}
-                                        label="Konfirmasi Kembali"
+                                        label="Konfirmasi Pengembalian"
                                         kelas={TOMBOL_SETUJU}
                                     />
                                 )}

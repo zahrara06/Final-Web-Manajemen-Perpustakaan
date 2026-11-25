@@ -1,6 +1,8 @@
 import Link from "next/link";
+import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
 import Badge from "@/components/Badge";
+import AngkaHitung from "@/components/AngkaHitung";
 
 const MENU = [
     {
@@ -37,6 +39,16 @@ const MENU = [
 
 export default async function DashboardAdmin() {
     const sesi = await wajibPeran("Admin");
+    const { rows } = await pool.query(`
+        SELECT
+            (SELECT COUNT(*) FROM pengguna) AS total_pengguna,
+            (SELECT COUNT(*) FROM buku) AS jumlah_judul,
+            (SELECT COUNT(*) FROM peminjaman
+             WHERE status IN ('Menunggu Konfirmasi', 'Sedang Dipinjam')) AS pinjaman_aktif,
+            (SELECT COUNT(*) FROM peminjaman
+             WHERE status = 'Menunggu Konfirmasi') AS menunggu_persetujuan
+    `);
+    const statistik = rows[0];
 
     return (
         <>
@@ -70,6 +82,28 @@ export default async function DashboardAdmin() {
                         Akses cepat ke seluruh modul pengelolaan perpustakaan.
                     </p>
                 </div>
+            </section>
+
+            <section
+                aria-label="Ringkasan statistik perpustakaan"
+                className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            >
+                {[
+                    ["Akun pengguna", statistik.total_pengguna],
+                    ["Judul buku", statistik.jumlah_judul],
+                    ["Pinjaman aktif", statistik.pinjaman_aktif],
+                    ["Menunggu persetujuan", statistik.menunggu_persetujuan],
+                ].map(([label, nilai]) => (
+                    <article
+                        key={label}
+                        className="grid content-start gap-2 rounded-[18px] border-[2.5px] border-biru-tua bg-white p-4 shadow-keras"
+                    >
+                        <h2 className="text-sm font-bold">{label}</h2>
+                        <p className="font-judul text-3xl font-extrabold text-biru">
+                            <AngkaHitung nilai={Number(nilai)} />
+                        </p>
+                    </article>
+                ))}
             </section>
 
             <section>
