@@ -9,6 +9,7 @@ import {
 } from "@/lib/notif";
 import {
     ajukanPerpanjangan,
+    ajukanPengembalian,
     beriUlasan,
     hapusUlasan,
     tandaiNotifDibaca,
@@ -188,27 +189,81 @@ export default async function DashboardMahasiswa({ searchParams }) {
                                         ) : "-"}
                                     </td>
                                     <td>
-                                        {p.status === "Sedang Dipinjam" &&
-                                        p.status_perpanjangan === "Tidak Ada" &&
-                                        p.sebelum_jatuh_tempo && (
-                                            <form action={ajukanPerpanjangan}>
-                                            <input type="hidden" name="id" value={p.id} />
-                                            <button className={KELAS_TOMBOL_AKSI}>
-                                                Ajukan Perpanjangan
-                                            </button>
-                                            </form>
-                                        )}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {p.status === "Sedang Dipinjam" &&
+                                                (p.pengembalian_diajukan ? (
+                                                    <Badge>
+                                                        Menunggu konfirmasi pengembalian
+                                                    </Badge>
+                                                ) : p.status_perpanjangan ===
+                                                  "Diajukan" ? (
+                                                    <Badge>
+                                                        Menunggu keputusan perpanjangan
+                                                    </Badge>
+                                                ) : (
+                                                    <>
+                                                        <form action={ajukanPengembalian}>
+                                                            <input
+                                                                type="hidden"
+                                                                name="id"
+                                                                value={p.id}
+                                                            />
+                                                            <button
+                                                                type="submit"
+                                                                className={KELAS_TOMBOL_TANDAI_BACA}
+                                                            >
+                                                                Ajukan Pengembalian
+                                                            </button>
+                                                        </form>
 
-                                    {p.status === "Menunggu Konfirmasi" && (
-                                        <small>Temui petugas sirkulasi</small>
-                                    )}
-                                    {p.status !== "Menunggu Konfirmasi" &&
-                                        !(
-                                            p.status === "Sedang Dipinjam" &&
-                                            p.status_perpanjangan === "Tidak Ada" &&
-                                            p.sebelum_jatuh_tempo
-                                        ) && "-"}
-                                </td>
+                                                        {p.status_perpanjangan ===
+                                                            "Tidak Ada" &&
+                                                            p.sebelum_jatuh_tempo && (
+                                                                <form
+                                                                    action={
+                                                                        ajukanPerpanjangan
+                                                                    }
+                                                                >
+                                                                    <input
+                                                                        type="hidden"
+                                                                        name="id"
+                                                                        value={p.id}
+                                                                    />
+                                                                    <button
+                                                                        type="submit"
+                                                                        className={
+                                                                            KELAS_TOMBOL_AKSI
+                                                                        }
+                                                                    >
+                                                                        Ajukan
+                                                                        Perpanjangan
+                                                                    </button>
+                                                                </form>
+                                                            )}
+                                                    </>
+                                                ))}
+
+                                            {p.status === "Sedang Dipinjam" &&
+                                                p.status_perpanjangan ===
+                                                    "Disetujui" && (
+                                                    <Badge>
+                                                        Perpanjangan disetujui
+                                                    </Badge>
+                                                )}
+                                            {p.status === "Sedang Dipinjam" &&
+                                                p.status_perpanjangan ===
+                                                    "Ditolak" && (
+                                                    <Badge>
+                                                        Perpanjangan ditolak
+                                                    </Badge>
+                                                )}
+                                            {p.status === "Menunggu Konfirmasi" && (
+                                                <small>
+                                                    Temui petugas sirkulasi
+                                                </small>
+                                            )}
+                                        </div>
+                                    </td>
                             </tr>
                         ))}
 

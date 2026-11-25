@@ -72,13 +72,42 @@ export async function ajukanPerpanjangan(formData) {
                 AND pengguna_id = $2
                 AND status = 'Sedang Dipinjam'
                 AND jatuh_tempo > CURRENT_DATE
+                AND pengembalian_diajukan = FALSE
                 AND status_perpanjangan = 'Tidak Ada'`,
                 [id, sesi.id]
             );
 
             if (hasil.rowCount === 0) {
                 throw new Error(
-                    "Perpanjangan hanya dapat diajukan sebelum jatuh tempo dan satu kali per peminjaman."
+                    "Perpanjangan hanya dapat diajukan sebelum jatuh tempo, satu kali per peminjaman, dan sebelum mengajukan pengembalian."
+                );
+            }
+        }
+    );
+}
+
+export async function ajukanPengembalian(formData) {
+    const sesi = await wajibPeran("Mahasiswa");
+    const id = ambilAngka(formData, "id");
+
+    await jalankan(
+        "/mahasiswa",
+        "Pengajuan pengembalian terkirim. Serahkan buku kepada petugas untuk dikonfirmasi.",
+        async () => {
+            const hasil = await pool.query(
+                `UPDATE peminjaman
+                 SET pengembalian_diajukan = TRUE
+                 WHERE id = $1
+                   AND pengguna_id = $2
+                   AND status = 'Sedang Dipinjam'
+                   AND pengembalian_diajukan = FALSE
+                   AND status_perpanjangan <> 'Diajukan'`,
+                [id, sesi.id]
+            );
+
+            if (hasil.rowCount === 0) {
+                throw new Error(
+                    "Pengembalian tidak dapat diajukan. Pastikan pinjaman masih aktif dan tidak ada perpanjangan yang menunggu keputusan."
                 );
             }
         }

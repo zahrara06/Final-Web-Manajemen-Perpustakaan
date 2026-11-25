@@ -77,6 +77,7 @@ CREATE TABLE peminjaman (
   tanggal_kembali     DATE,
   status_perpanjangan VARCHAR(30) NOT NULL DEFAULT 'Tidak Ada'
                       CHECK (status_perpanjangan IN ('Tidak Ada', 'Diajukan', 'Disetujui', 'Ditolak')),
+  pengembalian_diajukan BOOLEAN NOT NULL DEFAULT FALSE,
   denda_total         INTEGER NOT NULL DEFAULT 0,
   status_denda        VARCHAR(20) NOT NULL DEFAULT 'Tidak Ada'
                       CHECK (status_denda IN ('Tidak Ada', 'Tertunggak', 'Lunas')),
@@ -104,6 +105,9 @@ CREATE TABLE notifikasi (
 
 CREATE INDEX idx_peminjaman_pengguna ON peminjaman (pengguna_id);
 CREATE INDEX idx_peminjaman_buku ON peminjaman (buku_id);
+
+ALTER TABLE peminjaman
+ADD COLUMN IF NOT EXISTS pengembalian_diajukan BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ======================== DATA CONTOH ========================
 

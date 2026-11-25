@@ -42,11 +42,14 @@ export default async function DashboardPegawai({ searchParams }) {
         pool.query(
             `SELECT p.id, p.jatuh_tempo, u.nama_lengkap, b.judul, b.durasi_pinjam_hari
             ${DASAR_QUERY}
-            WHERE p.status_perpanjangan = 'Diajukan'
+            WHERE p.status = 'Sedang Dipinjam'
+                AND p.pengembalian_diajukan = FALSE
+                AND p.status_perpanjangan = 'Diajukan'
             ORDER BY p.id`
         ),
         pool.query(
-            `SELECT p.id, p.jatuh_tempo, u.nama_lengkap, u.nomor_identitas, b.judul,
+            `SELECT p.id, p.jatuh_tempo, p.pengembalian_diajukan,
+                    u.nama_lengkap, u.nomor_identitas, b.judul,
                     p.bukti_id, bb.metode AS metode_bayar, bb.nominal AS nominal_bayar,
                     GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari AS denda_berjalan
             ${DASAR_QUERY}
@@ -126,7 +129,14 @@ export default async function DashboardPegawai({ searchParams }) {
                                 <br />
                                 <small>{p.nomor_identitas}</small>
                             </td>
-                            <td>{p.judul}</td>
+                            <td>
+                                <div className="grid gap-1">
+                                    <span>{p.judul}</span>
+                                    {p.pengembalian_diajukan && (
+                                        <Badge>Pengembalian diajukan</Badge>
+                                    )}
+                                </div>
+                            </td>
                             <td>{p.stok_tersedia}</td>
                             <td>{formatTanggal(p.tanggal_ajuan)}</td>
                             <td>
@@ -135,6 +145,7 @@ export default async function DashboardPegawai({ searchParams }) {
                                         aksi={setujuiPinjam}
                                         id={p.id}
                                         label="Setujui"
+                                        kelas={`${TOMBOL_SETUJU} w-24 justify-center whitespace-nowrap`}
                                     />
 
                                     <form action={tolakPinjam}>
@@ -146,7 +157,11 @@ export default async function DashboardPegawai({ searchParams }) {
                                             className="min-w-[180px] py-1 text-sm"
                                         />
 
-                                        <button className={TOMBOL_HAPUS}>✕ Tolak</button>
+                                        <button
+                                            className={`${TOMBOL_HAPUS} w-24 justify-center whitespace-nowrap`}
+                                        >
+                                            ✕ Tolak
+                                        </button>
                                     </form>
                                 </div>
                             </td>
