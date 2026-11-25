@@ -5,7 +5,7 @@ import { rupiah, formatTanggal } from "@/lib/util";
 import {
     setujuiPinjam,
     tolakPinjam,
-    konfirmasiKembali,
+    konfirmasiPengembalian,
     catatDendaLunas,
     putuskanPerpanjangan,
 } from "@/app/actions/loans";
@@ -245,7 +245,7 @@ export default async function DashboardPegawai({ searchParams }) {
                             </td>
                             <td>
                                 <TombolBaris
-                                aksi={konfirmasiKembali}
+                                aksi={konfirmasiPengembalian}
                                 id={p.id}
                                 label="Konfirmasi Kembali"
                                 kelas={TOMBOL_SETUJU}

@@ -31,7 +31,9 @@ export default async function DetailBuku({ params, searchParams }) {
   if (!buku) notFound();
 
   const ulasan = await pool.query(
-    `SELECT u.rating,
+    `SELECT u.id,
+            u.pengguna_id,
+            u.rating,
             u.komentar,
             u.dibuat_pada,
             p.nama_lengkap

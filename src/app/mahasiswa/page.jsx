@@ -3,10 +3,16 @@ import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
 import { rupiah, formatTanggal } from "@/lib/util";
 import { buatPengingatJatuhTempo, ambilNotif } from "@/lib/notif";
-import { ajukanPerpanjangan, beriUlasan, tandaiNotifDibaca } from "@/app/actions/loans";
+import {
+    ajukanPerpanjangan,
+    beriUlasan,
+    hapusUlasan,
+    tandaiNotifDibaca,
+} from "@/app/actions/loans";
 import Badge from "@/components/Badge";
 import Field from "@/components/Field";
 import Pesan from "@/components/Pesan";
+import TombolHapus from "@/components/TombolHapus";
 
 const KELAS_KARTU =
     "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white";
@@ -35,7 +41,7 @@ export default async function DashboardMahasiswa({ searchParams }) {
                 CASE WHEN p.status = 'Sedang Dipinjam'
                     THEN GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari
                     ELSE p.denda_total END AS denda_saat_ini,
-                u.rating AS rating_saya, u.komentar AS komentar_saya
+                u.id AS ulasan_id, u.rating AS rating_saya, u.komentar AS komentar_saya
         FROM peminjaman p
         JOIN buku b ON b.id = p.buku_id
         LEFT JOIN ulasan u ON u.peminjaman_id = p.id
@@ -234,7 +240,7 @@ export default async function DashboardMahasiswa({ searchParams }) {
                             <th>Status</th>
                             <th>Dikembalikan</th>
                             <th>Denda</th>
-                            <th>Ulasan</th>
+                            <th>Aksi</th>
                         </tr>
                         </thead>
 
@@ -256,12 +262,24 @@ export default async function DashboardMahasiswa({ searchParams }) {
                             </td>
                             <td>
                                 {p.status === "Selesai" && (
-                                <Link
-                                    href={`/mahasiswa?ulas=${p.id}#ulasan`}
-                                    className="font-bold text-biru underline"
-                                >
-                                    {p.rating_saya ? "Ubah ulasan" : "Tulis ulasan"}
-                                </Link>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Link
+                                            href={`/mahasiswa?ulas=${p.id}#ulasan`}
+                                            className={KELAS_TOMBOL_AKSI}
+                                        >
+                                            {p.rating_saya ? "Ubah ulasan" : "Tulis ulasan"}
+                                        </Link>
+
+                                        {p.ulasan_id && (
+                                            <TombolHapus
+                                                aksi={hapusUlasan}
+                                                id={p.ulasan_id}
+                                                judul="Hapus ulasan?"
+                                                pesan={`Hapus ulasan untuk "${p.judul}"?`}
+                                                tambahan={{ kembali: "/mahasiswa" }}
+                                            />
+                                        )}
+                                    </div>
                                 )}
                             </td>
                             </tr>

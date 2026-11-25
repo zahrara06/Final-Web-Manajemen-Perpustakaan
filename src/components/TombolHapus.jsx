@@ -4,12 +4,13 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { TOMBOL_HAPUS, TOMBOL_BATAL } from "@/components/gayaTombol";
 
-export default function TombolHapus({
-    aksi,
-    id,
-    pesan = "Yakin ingin menghapus data ini?",
-    judul = "Hapus data?",
-    labelKonfirmasi = "Ya, Hapus",
+export default function TombolHapus({ 
+    aksi, 
+    id, 
+    judul = "Konfirmasi hapus", 
+    pesan = "Yakin ingin menghapus data ini?", 
+    labelKonfirmasi = "Ya, hapus", 
+    tambahan = {} 
 }) {
     const [buka, setBuka] = useState(false);
     const idForm = useId();
@@ -34,6 +35,9 @@ export default function TombolHapus({
         <>
             <form id={idForm} action={aksi}>
                 <input type="hidden" name="id" value={id} />
+                    {Object.entries(tambahan).map(([nama, nilai]) => (
+                        <input key={nama} type="hidden" name={nama} value={nilai} />
+                    ))}
                 <button
                     type="button"
                     onClick={() => setBuka(true)}
@@ -61,9 +65,6 @@ export default function TombolHapus({
 
                             <h3 className="text-xl">{judul}</h3>
                             <p className="mt-2 opacity-85">{pesan}</p>
-                            <p className="mt-1 text-sm font-semibold text-red-700">
-                                Tindakan ini tidak dapat dibatalkan.
-                            </p>
 
                             <div className="mt-6 flex justify-end gap-3">
                                 <button

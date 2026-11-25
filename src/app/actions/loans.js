@@ -159,7 +159,7 @@ export async function tolakPinjam(formData) {
     });
 }
 
-export async function konfirmasiKembali(formData) {
+export async function konfirmasiPengembalian(formData) {
     await wajibPeran("Pegawai", "Admin");
     const id = ambilAngka(formData, "id");
 
@@ -301,6 +301,25 @@ export async function beriUlasan(formData) {
             }
         }
     );
+}
+
+export async function hapusUlasan(formData) {
+    const sesi = await wajibPeran("Mahasiswa", "Pegawai", "Admin");
+    const ulasanId = ambilAngka(formData, "id");
+    const kembali = ambilTeks(formData, "kembali");
+    const jalurKembali = kembali.startsWith("/") && !kembali.startsWith("//") ? kembali : "/mahasiswa";
+
+    await jalankan(jalurKembali, "Ulasan dihapus.", async () => {
+        const hasil = await pool.query(
+            `DELETE FROM ulasan
+             WHERE id = $1
+               AND ($2::boolean OR pengguna_id = $3)`,
+            [ulasanId, sesi.peran !== "Mahasiswa", sesi.id]
+        );
+        if (hasil.rowCount === 0) {
+            throw new Error("Ulasan tidak ditemukan atau bukan milik Anda.");
+        }
+    });
 }
 
 export async function tandaiNotifDibaca() {
