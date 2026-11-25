@@ -2,6 +2,7 @@ import Link from "next/link";
 import Latar3D from "@/components/Latar3D";
 import Pesan from "@/components/Pesan";
 import Field from "@/components/Field";
+import InputKataSandi from "@/components/InputKataSandi";
 import { masuk } from "@/app/actions/auth";
 
 export default async function HalamanLogin({ searchParams }) {
@@ -21,7 +22,7 @@ export default async function HalamanLogin({ searchParams }) {
                 <form action={masuk} className="grid gap-4">
                 <input type="hidden" name="dari" value={sp.dari ?? ""} />
                 <Field label="Email" nama="email" tipe="email" />
-                <Field label="Kata sandi" nama="kata_sandi" tipe="password" />
+                <InputKataSandi />
 
                 <button className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning">
                     Masuk
