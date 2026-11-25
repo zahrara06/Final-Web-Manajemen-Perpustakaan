@@ -106,9 +106,6 @@ CREATE TABLE notifikasi (
 CREATE INDEX idx_peminjaman_pengguna ON peminjaman (pengguna_id);
 CREATE INDEX idx_peminjaman_buku ON peminjaman (buku_id);
 
-ALTER TABLE peminjaman
-ADD COLUMN IF NOT EXISTS pengembalian_diajukan BOOLEAN NOT NULL DEFAULT FALSE;
-
 -- ======================== DATA CONTOH ========================
 
 -- Akun contoh: admin123 / pegawai123 / mahasiswa123
