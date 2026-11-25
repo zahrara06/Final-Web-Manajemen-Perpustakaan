@@ -10,6 +10,7 @@ import {
     putuskanPerpanjangan,
 } from "@/app/actions/loans";
 import Pesan from "@/components/Pesan";
+import { TOMBOL_HAPUS, TOMBOL_SETUJU } from "@/components/gayaTombol";
 
 const KELAS_KARTU_TAUTAN =
     "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white font-bold";
@@ -129,9 +130,8 @@ export default async function DashboardPegawai({ searchParams }) {
                                             required
                                             className="min-w-[180px] py-1 text-sm"
                                         />
-                                        <button className="cursor-pointer font-bold text-red-700 underline">
-                                            Tolak
-                                        </button>
+
+                                        <button className={TOMBOL_HAPUS}>✕ Tolak</button>
                                     </form>
                                 </div>
                             </td>
@@ -179,13 +179,14 @@ export default async function DashboardPegawai({ searchParams }) {
                                         id={p.id}
                                         nilai="setuju"
                                         label="Setujui"
+                                        kelas={TOMBOL_SETUJU}
                                     />
                                     <TombolBaris
                                         aksi={putuskanPerpanjangan}
                                         id={p.id}
                                         nilai="tolak"
                                         label="Tolak"
-                                        kelas="cursor-pointer font-bold text-red-700 underline"
+                                        kelas="{TOMBOL_HAPUS}"
                                     />
                                 </div>
                             </td>
@@ -247,6 +248,7 @@ export default async function DashboardPegawai({ searchParams }) {
                                 aksi={konfirmasiKembali}
                                 id={p.id}
                                 label="Konfirmasi Kembali"
+                                kelas={TOMBOL_SETUJU}
                                 />
                             </td>
                             </tr>
