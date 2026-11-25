@@ -60,7 +60,7 @@ export default async function Navbar() {
 
                 <div className="[&_form]:flex [&_form]:items-center [&_form]:gap-3">
                     {sesi ? (
-                        <form action={keluar}>
+                        <div className="flex items-center gap-3">
                             <Link
                                 href="/profil"
                                 className="flex items-center gap-2 text-sm font-semibold hover:underline"
@@ -74,11 +74,16 @@ export default async function Navbar() {
                                     {profil?.nama_lengkap ?? sesi.nama} ({sesi.peran})
                                 </span>
                             </Link>
-                            
-                            <button className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-white">
-                                Keluar
-                            </button>
-                        </form>
+
+                            <form action={keluar}>
+                                <button
+                                    type="submit"
+                                    className="inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-white"
+                                >
+                                    Keluar
+                                </button>
+                            </form>
+                        </div>
                     ) : (
                         <Link
                         href="/login"
