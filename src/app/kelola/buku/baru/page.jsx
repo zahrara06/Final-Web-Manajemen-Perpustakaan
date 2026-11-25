@@ -12,7 +12,7 @@ export default async function TambahBuku() {
     );
 
     return (
-        <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white max-w-[760px]">
+        <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-8 bg-white w-full">
             <h1 className="text-[2rem] mb-4">Tambah Buku</h1>
 
             <BookForm
@@ -20,12 +20,6 @@ export default async function TambahBuku() {
                 daftarKategori={daftarKategori}
                 untukBaru
             />
-
-            <p className="mt-4">
-                <Link href="/kelola/buku" className="font-bold text-biru underline">
-                Batal dan kembali
-                </Link>
-            </p>
         </section>
     );
 }
