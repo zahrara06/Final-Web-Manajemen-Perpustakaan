@@ -112,8 +112,8 @@ CREATE INDEX idx_peminjaman_buku ON peminjaman (buku_id);
 INSERT INTO pengguna (nama_lengkap, email, kata_sandi_hash, peran, nomor_identitas) VALUES
   ('Admin LiteraSpace', 'admin@literaspace.ac.id', '$2a$10$eWhpYTfz8N7y1VjnMooWlefsK1n9RcMubW7nUt.Gld08kaZr.lfb2', 'Admin', 'ADM-001'),
   ('Pegawai Perpustakaan', 'pegawai@literaspace.ac.id', '$2a$10$jfukzfpHvFypinrU05P07.nf5XU1AIdOc5sfLJTt7szrBHbN.A4dO', 'Pegawai', 'PGW-001'),
-  ('Mahasiswa Contoh', 'mahasiswa@student.literaspace.ac.id', '$2a$10$yAnzMmgMSYDu1xZ8qZ5OZOnnnIy5uzmFdDvWqX2w/6QxPcRHXv07K', 'Mahasiswa', '2026001'),
-  ('Mahasiswa Berdenda', 'denda@student.literaspace.ac.id', '$2a$10$yAnzMmgMSYDu1xZ8qZ5OZOnnnIy5uzmFdDvWqX2w/6QxPcRHXv07K', 'Mahasiswa', '2026002');
+  ('Mahasiswa Contoh', 'mahasiswa@student.literaspace.ac.id', '$2a$10$yAnzMmgMSYDu1xZ8qZ5OZOnnnIy5uzmFdDvWqX2w/6QxPcRHXv07K', 'Mahasiswa', 'H071251004'),
+  ('Mahasiswa Berdenda', 'denda@student.literaspace.ac.id', '$2a$10$yAnzMmgMSYDu1xZ8qZ5OZOnnnIy5uzmFdDvWqX2w/6QxPcRHXv07K', 'Mahasiswa', 'H071251005');
 
 INSERT INTO kategori (nama, kode, deskripsi) VALUES
   ('Teknologi Informasi', 'TI', 'Pemrograman, basis data, jaringan, dan rekayasa perangkat lunak'),
@@ -141,7 +141,7 @@ INSERT INTO pengumuman (judul, isi, kategori, tanggal_rilis, status, penulis_id)
 
 -- ======================== DATA TRANSAKSI ========================
 
--- Riwayat selesai (mengisi peringkat buku terpopuler dan rating)
+-- Riwayat selesai (mengisi peringkat buku terpopuler dan rating), tanpa denda
 INSERT INTO peminjaman (pengguna_id, buku_id, status, tanggal_pinjam, jatuh_tempo, tanggal_kembali)
 SELECT p.id, b.id, 'Selesai', CURRENT_DATE - 30, CURRENT_DATE - 20, CURRENT_DATE - 22
 FROM pengguna p CROSS JOIN buku b
@@ -166,13 +166,13 @@ SELECT (SELECT id FROM pengguna WHERE email = 'mahasiswa@student.literaspace.ac.
 FROM buku WHERE isbn = '9780323597128';
 UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE isbn = '9780323597128';
 
--- Pinjaman aktif jatuh tempo besok (memicu notifikasi pengingat H-1 saat dashboard dibuka)
+-- Pinjaman aktif jatuh tempo besok, belum terlambat (memicu notifikasi pengingat H-1 saat dashboard dibuka)
 INSERT INTO peminjaman (pengguna_id, buku_id, status, tanggal_pinjam, jatuh_tempo)
 SELECT (SELECT id FROM pengguna WHERE email = 'mahasiswa@student.literaspace.ac.id'), id, 'Sedang Dipinjam', CURRENT_DATE - 13, CURRENT_DATE + 1
 FROM buku WHERE isbn = '9780201633610';
 UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE isbn = '9780201633610';
 
--- Denda tertunggak (memicu pemblokiran peminjaman baru)
+-- Denda tertunggak (memicu pemblokiran peminjaman baru dan notifikasi denda)
 INSERT INTO peminjaman (pengguna_id, buku_id, status, tanggal_pinjam, jatuh_tempo, tanggal_kembali, denda_total, status_denda)
 SELECT (SELECT id FROM pengguna WHERE email = 'denda@student.literaspace.ac.id'), id, 'Selesai', CURRENT_DATE - 28, CURRENT_DATE - 18, CURRENT_DATE - 3, 15000, 'Tertunggak'
 FROM buku WHERE isbn = '9780199644704';
