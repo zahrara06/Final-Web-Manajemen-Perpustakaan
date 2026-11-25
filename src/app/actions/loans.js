@@ -71,13 +71,14 @@ export async function ajukanPerpanjangan(formData) {
                 WHERE id = $1
                 AND pengguna_id = $2
                 AND status = 'Sedang Dipinjam'
+                AND jatuh_tempo > CURRENT_DATE
                 AND status_perpanjangan = 'Tidak Ada'`,
                 [id, sesi.id]
             );
 
             if (hasil.rowCount === 0) {
                 throw new Error(
-                "Perpanjangan tidak dapat diajukan (hanya satu kali per peminjaman)."
+                    "Perpanjangan hanya dapat diajukan sebelum jatuh tempo dan satu kali per peminjaman."
                 );
             }
         }
@@ -159,6 +160,82 @@ export async function tolakPinjam(formData) {
     });
 }
 
+const TIPE_BUKTI = ["image/jpeg", "image/png", "image/webp"];
+const BATAS_BUKTI = 2 * 1024 * 1024;
+
+export async function ajukanBayarDenda(formData) {
+    const sesi = await wajibPeran("Mahasiswa");
+    const peminjamanId = ambilAngka(formData, "peminjaman_id");
+    const metode = ambilTeks(formData, "metode");
+    const berkas = formData.get("bukti");
+
+    await jalankan(
+        "/mahasiswa",
+        "Bukti pembayaran terkirim. Menunggu verifikasi petugas.",
+        async () => {
+            if (!["QRIS", "Transfer"].includes(metode)) {
+                throw new Error("Metode pembayaran tidak valid.");
+            }
+
+            if (!berkas || typeof berkas !== "object" || berkas.size === 0) {
+                throw new Error("Unggah foto bukti pembayaran terlebih dahulu.");
+            }
+
+            if (!TIPE_BUKTI.includes(berkas.type)) {
+                throw new Error("Bukti harus berformat JPG, PNG, atau WEBP.");
+            }
+
+            if (berkas.size > BATAS_BUKTI) {
+                throw new Error("Ukuran bukti maksimal 2 MB.");
+            }
+
+            const data = Buffer.from(await berkas.arrayBuffer());
+
+            await dalamTransaksi(async (koneksi) => {
+                const hasil = await koneksi.query(
+                    `SELECT p.id,
+                            CASE WHEN p.status = 'Sedang Dipinjam'
+                                THEN GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari
+                                ELSE p.denda_total END AS denda
+                    FROM peminjaman p
+                    JOIN buku b ON b.id = p.buku_id
+                    WHERE p.id = $1
+                        AND p.pengguna_id = $2
+                        AND p.bukti_id IS NULL
+                        AND (p.status = 'Sedang Dipinjam' OR p.status_denda = 'Tertunggak')
+                    FOR UPDATE OF p`,
+                    [peminjamanId, sesi.id]
+                );
+
+                const transaksi = hasil.rows[0];
+                const nominal = Number(transaksi?.denda);
+                if (!transaksi || !Number.isFinite(nominal) || nominal <= 0) {
+                    throw new Error(
+                        "Denda tidak ditemukan, sudah dibayar, atau bukti sedang menunggu verifikasi."
+                    );
+                }
+
+                const bukti = await koneksi.query(
+                    `INSERT INTO bukti_bayar (pengguna_id, metode, nominal, data, tipe)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING id`,
+                    [sesi.id, metode, nominal, data, berkas.type]
+                );
+
+                const diperbarui = await koneksi.query(
+                    `UPDATE peminjaman
+                    SET bukti_id = $1
+                    WHERE id = $2 AND pengguna_id = $3 AND bukti_id IS NULL`,
+                    [bukti.rows[0].id, peminjamanId, sesi.id]
+                );
+                if (diperbarui.rowCount === 0) {
+                    throw new Error("Bukti pembayaran tidak dapat dikaitkan ke peminjaman.");
+                }
+            });
+        }
+    );
+}
+
 export async function konfirmasiPengembalian(formData) {
     await wajibPeran("Pegawai", "Admin");
     const id = ambilAngka(formData, "id");
@@ -168,65 +245,109 @@ export async function konfirmasiPengembalian(formData) {
         "Pengembalian dikonfirmasi, stok bertambah 1.",
         async () => {
             await dalamTransaksi(async (koneksi) => {
-                const hasil = await koneksi.query(
-                `UPDATE peminjaman p
-                SET status = 'Selesai',
-                    tanggal_kembali = CURRENT_DATE,
-                    denda_total = GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari,
-                    status_denda = CASE
-                        WHEN CURRENT_DATE > p.jatuh_tempo AND b.denda_per_hari > 0
-                        THEN 'Tertunggak'
-                        ELSE 'Tidak Ada'
-                    END
-                FROM buku b
-                WHERE b.id = p.buku_id
-                    AND p.id = $1
-                    AND p.status = 'Sedang Dipinjam'
-                RETURNING p.buku_id, p.denda_total`,
-                [id]
+                const cek = await koneksi.query(
+                    `SELECT p.bukti_id,
+                            GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari AS denda
+                    FROM peminjaman p
+                    JOIN buku b ON b.id = p.buku_id
+                    WHERE p.id = $1 AND p.status = 'Sedang Dipinjam'
+                    FOR UPDATE OF p`,
+                    [id]
                 );
 
-                if (!hasil.rows[0]) {
-                throw new Error("Transaksi tidak ditemukan atau sudah selesai.");
+                if (!cek.rows[0]) {
+                    throw new Error("Transaksi tidak ditemukan atau sudah selesai.");
                 }
 
-                await koneksi.query(
-                "UPDATE buku SET stok_tersedia = stok_tersedia + 1 WHERE id = $1",
-                [hasil.rows[0].buku_id]
+                const denda = cek.rows[0].denda;
+
+                if (denda > 0 && !cek.rows[0].bukti_id) {
+                    throw new Error(
+                        "Mahasiswa belum mengunggah bukti pembayaran denda."
+                    );
+                }
+
+                const hasil = await koneksi.query(
+                    `UPDATE peminjaman
+                    SET status = 'Selesai',
+                        tanggal_kembali = CURRENT_DATE,
+                        denda_total = $2::int,
+                        status_denda = CASE WHEN $2::int > 0 THEN 'Lunas' ELSE 'Tidak Ada' END
+                    WHERE id = $1
+                    RETURNING buku_id`,
+                    [id, denda]
                 );
 
-                const denda = hasil.rows[0].denda_total;
+                await koneksi.query(
+                    "UPDATE buku SET stok_tersedia = stok_tersedia + 1 WHERE id = $1",
+                    [hasil.rows[0].buku_id]
+                );
+
                 await catatNotifPeminjaman(
-                koneksi,
-                id,
-                denda > 0
-                    ? `Denda baru tercatat ${rupiah(denda)}.`
-                    : "Pengembalian buku dikonfirmasi."
+                    koneksi,
+                    id,
+                    denda > 0
+                        ? `Denda ${rupiah(denda)} tercatat dan dinyatakan lunas.`
+                        : "Pengembalian buku dikonfirmasi."
                 );
             });
         }
     );
 }
 
-    export async function catatDendaLunas(formData) {
+export async function tolakBukti(formData) {
+    await wajibPeran("Pegawai", "Admin");
+    const id = ambilAngka(formData, "id");
+
+    await jalankan(
+        "/pegawai",
+        "Bukti pembayaran ditolak. Mahasiswa diminta mengunggah ulang.",
+        async () => {
+            const hasil = await pool.query(
+                `UPDATE peminjaman
+                SET bukti_id = NULL
+                WHERE id = $1
+                    AND bukti_id IS NOT NULL
+                    AND (status = 'Sedang Dipinjam' OR status_denda = 'Tertunggak')`,
+                [id]
+            );
+
+            if (hasil.rowCount === 0) {
+                throw new Error("Bukti pembayaran tidak ditemukan.");
+            }
+
+            await catatNotifPeminjaman(
+                pool,
+                id,
+                "Bukti pembayaran denda ditolak, silakan unggah ulang bukti yang jelas."
+            );
+        }
+    );
+}
+
+export async function catatDendaLunas(formData) {
     await wajibPeran("Pegawai", "Admin");
     const id = ambilAngka(formData, "id");
 
     await jalankan("/pegawai", "Denda dicatat lunas.", async () => {
-        await pool.query(
-        "UPDATE peminjaman SET status_denda = 'Lunas' WHERE id = $1 AND status_denda = 'Tertunggak'",
-        [id]
+        const hasil = await pool.query(
+            `UPDATE peminjaman
+            SET status_denda = 'Lunas'
+            WHERE id = $1 AND status_denda = 'Tertunggak' AND bukti_id IS NOT NULL`,
+            [id]
         );
 
-        await catatNotifPeminjaman(
-        pool,
-        id,
-        "Denda Anda sudah dicatat lunas."
-        );
+        if (hasil.rowCount === 0) {
+            throw new Error(
+                "Denda tidak ditemukan atau mahasiswa belum mengunggah bukti pembayaran."
+            );
+        }
+
+        await catatNotifPeminjaman(pool, id, "Denda Anda sudah dicatat lunas.");
     });
-    }
+}
 
-    export async function putuskanPerpanjangan(formData) {
+export async function putuskanPerpanjangan(formData) {
     await wajibPeran("Pegawai", "Admin");
     const id = ambilAngka(formData, "id");
     const setuju = ambilTeks(formData, "keputusan") === "setuju";

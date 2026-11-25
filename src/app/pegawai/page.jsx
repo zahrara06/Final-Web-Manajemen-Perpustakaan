@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
 import { rupiah, formatTanggal } from "@/lib/util";
@@ -49,8 +50,10 @@ export default async function DashboardPegawai({ searchParams }) {
         ),
         pool.query(
             `SELECT p.id, p.jatuh_tempo, u.nama_lengkap, u.nomor_identitas, b.judul,
+                    p.bukti_id, bb.metode AS metode_bayar, bb.nominal AS nominal_bayar,
                     GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari AS denda_berjalan
             ${DASAR_QUERY}
+            LEFT JOIN bukti_bayar bb ON bb.id = p.bukti_id
             WHERE p.status = 'Sedang Dipinjam'
                 AND ($1::text = ''
                     OR u.nama_lengkap ILIKE '%' || $1 || '%'
@@ -60,8 +63,10 @@ export default async function DashboardPegawai({ searchParams }) {
             [kata]
         ),
         pool.query(
-            `SELECT p.id, p.denda_total, u.nama_lengkap, u.nomor_identitas, b.judul
+            `SELECT p.id, p.denda_total, u.nama_lengkap, u.nomor_identitas, b.judul,
+                    p.bukti_id, bb.metode AS metode_bayar, bb.nominal AS nominal_bayar
             ${DASAR_QUERY}
+            LEFT JOIN bukti_bayar bb ON bb.id = p.bukti_id
             WHERE p.status_denda = 'Tertunggak'
             ORDER BY p.id`
         ),
@@ -226,6 +231,7 @@ export default async function DashboardPegawai({ searchParams }) {
                             <th>Buku</th>
                             <th>Jatuh tempo</th>
                             <th>Denda berjalan</th>
+                            <th>Bukti pembayaran</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -244,19 +250,33 @@ export default async function DashboardPegawai({ searchParams }) {
                                 {p.denda_berjalan > 0 ? rupiah(p.denda_berjalan) : "-"}
                             </td>
                             <td>
-                                <TombolBaris
-                                aksi={konfirmasiPengembalian}
-                                id={p.id}
-                                label="Konfirmasi Kembali"
-                                kelas={TOMBOL_SETUJU}
+                                <PratinjauBukti
+                                    buktiId={p.bukti_id}
+                                    metode={p.metode_bayar}
+                                    nominal={p.nominal_bayar}
+                                    adaTagihan={p.denda_berjalan > 0}
                                 />
+                            </td>
+                            <td>
+                                {p.denda_berjalan > 0 && !p.bukti_id ? (
+                                    <span className="font-semibold text-red-700">
+                                        Menunggu bukti pembayaran
+                                    </span>
+                                ) : (
+                                    <TombolBaris
+                                        aksi={konfirmasiPengembalian}
+                                        id={p.id}
+                                        label="Konfirmasi Kembali"
+                                        kelas={TOMBOL_SETUJU}
+                                    />
+                                )}
                             </td>
                             </tr>
                         ))}
 
                         {sirkulasi.rowCount === 0 && (
                             <tr>
-                            <td colSpan={5} className="p-5 text-center opacity-70">
+                            <td colSpan={6} className="p-5 text-center opacity-70">
                                 Tidak ada transaksi aktif yang cocok.
                             </td>
                             </tr>
@@ -276,6 +296,7 @@ export default async function DashboardPegawai({ searchParams }) {
                             <th>Mahasiswa</th>
                             <th>Buku</th>
                             <th>Denda</th>
+                            <th>Bukti pembayaran</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -291,18 +312,32 @@ export default async function DashboardPegawai({ searchParams }) {
                             <td>{p.judul}</td>
                             <td>{rupiah(p.denda_total)}</td>
                             <td>
-                                <TombolBaris
-                                aksi={catatDendaLunas}
-                                id={p.id}
-                                label="Catat Lunas"
+                                <PratinjauBukti
+                                    buktiId={p.bukti_id}
+                                    metode={p.metode_bayar}
+                                    nominal={p.nominal_bayar}
+                                    adaTagihan={p.denda_total > 0}
                                 />
+                            </td>
+                            <td>
+                                {p.bukti_id ? (
+                                    <TombolBaris
+                                        aksi={catatDendaLunas}
+                                        id={p.id}
+                                        label="Catat Lunas"
+                                    />
+                                ) : (
+                                    <span className="font-semibold text-red-700">
+                                        Menunggu bukti
+                                    </span>
+                                )}
                             </td>
                             </tr>
                         ))}
 
                         {denda.rowCount === 0 && (
                             <tr>
-                            <td colSpan={4} className="p-5 text-center opacity-70">
+                            <td colSpan={5} className="p-5 text-center opacity-70">
                                 Tidak ada denda tertunggak.
                             </td>
                             </tr>
@@ -333,5 +368,32 @@ function TombolBaris({
             {label}
         </button>
         </form>
+    );
+}
+
+function PratinjauBukti({ buktiId, metode, nominal, adaTagihan }) {
+    if (!buktiId) {
+        return <span>{adaTagihan ? "Belum ada bukti" : "-"}</span>;
+    }
+
+    return (
+        <a
+            href={`/api/bukti/${buktiId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="grid gap-1"
+        >
+            <Image
+                src={`/api/bukti/${buktiId}`}
+                alt="Foto bukti pembayaran"
+                width={160}
+                height={120}
+                unoptimized
+                className="h-24 w-36 rounded-lg border object-contain"
+            />
+            <span className="text-xs">
+                {metode} - {rupiah(nominal)}
+            </span>
+        </a>
     );
 }

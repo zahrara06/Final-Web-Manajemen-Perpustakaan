@@ -13,6 +13,7 @@ import Badge from "@/components/Badge";
 import Field from "@/components/Field";
 import Pesan from "@/components/Pesan";
 import TombolHapus from "@/components/TombolHapus";
+import FormBayarDenda from "@/components/FormBayarDenda";
 
 const KELAS_KARTU =
     "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white";
@@ -38,6 +39,7 @@ export default async function DashboardMahasiswa({ searchParams }) {
 
     const { rows } = await pool.query(
         `SELECT p.*, b.judul,
+                p.jatuh_tempo > CURRENT_DATE AS sebelum_jatuh_tempo,
                 CASE WHEN p.status = 'Sedang Dipinjam'
                     THEN GREATEST(0, CURRENT_DATE - p.jatuh_tempo) * b.denda_per_hari
                     ELSE p.denda_total END AS denda_saat_ini,
@@ -61,6 +63,11 @@ export default async function DashboardMahasiswa({ searchParams }) {
     const dendaBerjalan = aktif.reduce(
         (jumlah, p) => jumlah + (p.status === "Sedang Dipinjam" ? p.denda_saat_ini : 0),
         0
+    );
+    const adaBuktiMenunggu = rows.some(
+        (p) =>
+            p.bukti_id &&
+            (p.status === "Sedang Dipinjam" || p.status_denda === "Tertunggak")
     );
     const sedangDiulas = riwayat.find(
         (p) => String(p.id) === sp.ulas && p.status === "Selesai"
@@ -90,6 +97,13 @@ export default async function DashboardMahasiswa({ searchParams }) {
                 <strong>{rupiah(dendaBerjalan)}</strong>.
                 </p>
             )}
+
+            {adaBuktiMenunggu && (
+                <p className="mt-3 font-semibold">
+                    Bukti pembayaran sudah dikirim dan menunggu verifikasi petugas.
+                </p>
+            )}
+
             </section>
         )}
 
@@ -147,11 +161,25 @@ export default async function DashboardMahasiswa({ searchParams }) {
                                     </td>
                                     <td>{formatTanggal(p.jatuh_tempo)}</td>
                                     <td>
-                                        {p.denda_saat_ini > 0 ? rupiah(p.denda_saat_ini) : "-"}
+                                        {p.denda_saat_ini > 0 ? (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span>{rupiah(p.denda_saat_ini)}</span>
+                                                {p.bukti_id ? (
+                                                    <span className="text-sm">Menunggu verifikasi</span>
+                                                ) : (
+                                                    <FormBayarDenda
+                                                        peminjamanId={p.id}
+                                                        judulBuku={p.judul}
+                                                        nominal={rupiah(p.denda_saat_ini)}
+                                                    />
+                                                )}
+                                            </div>
+                                        ) : "-"}
                                     </td>
                                     <td>
                                         {p.status === "Sedang Dipinjam" &&
-                                        p.status_perpanjangan === "Tidak Ada" && (
+                                        p.status_perpanjangan === "Tidak Ada" &&
+                                        p.sebelum_jatuh_tempo && (
                                             <form action={ajukanPerpanjangan}>
                                             <input type="hidden" name="id" value={p.id} />
                                             <button className={KELAS_TOMBOL_AKSI}>
@@ -160,15 +188,15 @@ export default async function DashboardMahasiswa({ searchParams }) {
                                             </form>
                                         )}
 
-                                    {p.status_perpanjangan !== "Tidak Ada" && (
-                                        <span>
-                                            Perpanjangan {p.status_perpanjangan.toLowerCase()}
-                                        </span>
-                                    )}
-
                                     {p.status === "Menunggu Konfirmasi" && (
                                         <small>Temui petugas sirkulasi</small>
                                     )}
+                                    {p.status !== "Menunggu Konfirmasi" &&
+                                        !(
+                                            p.status === "Sedang Dipinjam" &&
+                                            p.status_perpanjangan === "Tidak Ada" &&
+                                            p.sebelum_jatuh_tempo
+                                        ) && "-"}
                                 </td>
                             </tr>
                         ))}
@@ -230,7 +258,7 @@ export default async function DashboardMahasiswa({ searchParams }) {
         )}
 
             <section>
-                <h2 className="mb-4">Riwayat Transaksi</h2>
+                <h2 className="mb-4">Riwayat Peminjaman Buku</h2>
 
                 <div className="overflow-x-auto">
                     <table className={KELAS_TABEL}>
@@ -256,9 +284,25 @@ export default async function DashboardMahasiswa({ searchParams }) {
                             </td>
                             <td>{formatTanggal(p.tanggal_kembali)}</td>
                             <td>
-                                {p.denda_total > 0
-                                ? `${rupiah(p.denda_total)} (${p.status_denda})`
-                                : "-"}
+                                {p.denda_total > 0 ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span>
+                                            {rupiah(p.denda_total)} ({p.status_denda})
+                                        </span>
+                                        {p.status_denda === "Tertunggak" &&
+                                            (p.bukti_id ? (
+                                                <span className="text-sm">
+                                                    Menunggu verifikasi
+                                                </span>
+                                            ) : (
+                                                <FormBayarDenda
+                                                    peminjamanId={p.id}
+                                                    judulBuku={p.judul}
+                                                    nominal={rupiah(p.denda_total)}
+                                                />
+                                            ))}
+                                    </div>
+                                ) : "-"}
                             </td>
                             <td>
                                 {p.status === "Selesai" && (
