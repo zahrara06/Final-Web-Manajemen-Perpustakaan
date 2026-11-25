@@ -456,3 +456,27 @@ export async function tandaiNotifDibaca() {
         async () => {}
     );
 }
+
+export async function tandaiNotifSatuDibaca(formData) {
+    const sesi = await wajibPeran("Mahasiswa");
+    const id = ambilAngka(formData, "id");
+
+    await jalankan(
+        "/mahasiswa",
+        "Notifikasi ditandai sudah dibaca.",
+        async () => {
+            const hasil = await pool.query(
+                `UPDATE notifikasi
+                 SET dibaca = TRUE
+                 WHERE id = $1
+                   AND pengguna_id = $2
+                   AND dibaca = FALSE`,
+                [id, sesi.id]
+            );
+
+            if (hasil.rowCount === 0) {
+                throw new Error("Notifikasi tidak ditemukan atau sudah dibaca.");
+            }
+        }
+    );
+}

@@ -28,6 +28,27 @@ export async function buatPengingatJatuhTempo(penggunaId) {
     );
 }
 
+export async function sinkronkanNotifDenda(penggunaId, daftarDenda) {
+    const pesan = daftarDenda.map((notifikasi) => notifikasi.pesan);
+    const kunci = daftarDenda.map((notifikasi) => notifikasi.kunci);
+
+    await pool.query(
+        `INSERT INTO notifikasi (pengguna_id, pesan, kunci)
+         SELECT $1, sumber.pesan, sumber.kunci
+         FROM UNNEST($2::text[], $3::text[]) AS sumber(pesan, kunci)
+         ON CONFLICT (kunci) DO UPDATE SET pesan = EXCLUDED.pesan`,
+        [penggunaId, pesan, kunci]
+    );
+
+    await pool.query(
+        `DELETE FROM notifikasi
+         WHERE pengguna_id = $1
+           AND kunci LIKE 'denda-status-%'
+           AND NOT (kunci = ANY($2::text[]))`,
+        [penggunaId, kunci]
+    );
+}
+
 export async function ambilNotif(penggunaId, batas = 8) {
     const { rows } = await pool.query(
         `SELECT id, pesan, dibaca, dibuat_pada

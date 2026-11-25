@@ -2,12 +2,17 @@ import Link from "next/link";
 import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
 import { rupiah, formatTanggal } from "@/lib/util";
-import { buatPengingatJatuhTempo, ambilNotif } from "@/lib/notif";
+import {
+    buatPengingatJatuhTempo,
+    sinkronkanNotifDenda,
+    ambilNotif,
+} from "@/lib/notif";
 import {
     ajukanPerpanjangan,
     beriUlasan,
     hapusUlasan,
     tandaiNotifDibaca,
+    tandaiNotifSatuDibaca,
 } from "@/app/actions/loans";
 import Badge from "@/components/Badge";
 import Field from "@/components/Field";
@@ -18,8 +23,12 @@ import FormBayarDenda from "@/components/FormBayarDenda";
 const KELAS_KARTU =
     "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white";
 
+const KELAS_TOMBOL_AKSI_DASAR =
+    "inline-block cursor-pointer text-center font-bold border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d]";
 const KELAS_TOMBOL_AKSI =
-    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning";
+    `${KELAS_TOMBOL_AKSI_DASAR} text-biru-tua bg-kuning`;
+const KELAS_TOMBOL_TANDAI_BACA =
+    `${KELAS_TOMBOL_AKSI_DASAR} text-white bg-biru`;
 
 const KELAS_TOMBOL_SUBMIT =
     "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning";
@@ -35,7 +44,6 @@ export default async function DashboardMahasiswa({ searchParams }) {
     const sp = await searchParams;
 
     await buatPengingatJatuhTempo(sesi.id);
-    const notifikasi = await ambilNotif(sesi.id);
 
     const { rows } = await pool.query(
         `SELECT p.*, b.judul,
@@ -54,21 +62,38 @@ export default async function DashboardMahasiswa({ searchParams }) {
 
     const aktif = rows.filter((p) => STATUS_AKTIF.includes(p.status));
     const riwayat = rows.filter((p) => !STATUS_AKTIF.includes(p.status));
-    const tertunggak = rows.filter((p) => p.status_denda === "Tertunggak");
+    const notifikasiDenda = rows.flatMap((p) => {
+        const hasil = [];
 
-    const totalTertunggak = tertunggak.reduce(
-        (jumlah, p) => jumlah + p.denda_saat_ini,
-        0
-    );
-    const dendaBerjalan = aktif.reduce(
-        (jumlah, p) => jumlah + (p.status === "Sedang Dipinjam" ? p.denda_saat_ini : 0),
-        0
-    );
-    const adaBuktiMenunggu = rows.some(
-        (p) =>
+        if (p.status === "Sedang Dipinjam" && p.denda_saat_ini > 0) {
+            hasil.push({
+                kunci: `denda-status-berjalan-${p.id}`,
+                pesan: `Denda berjalan ${rupiah(p.denda_saat_ini)} untuk buku "${p.judul}".`,
+            });
+        }
+
+        if (p.status_denda === "Tertunggak") {
+            hasil.push({
+                kunci: `denda-status-tertunggak-${p.id}`,
+                pesan: `Denda tertunggak ${rupiah(p.denda_total)} untuk buku "${p.judul}". Pengajuan pinjaman baru diblokir sampai pelunasan dicatat.`,
+            });
+        }
+
+        if (
             p.bukti_id &&
             (p.status === "Sedang Dipinjam" || p.status_denda === "Tertunggak")
-    );
+        ) {
+            hasil.push({
+                kunci: `denda-status-verifikasi-${p.id}`,
+                pesan: `Bukti pembayaran denda untuk buku "${p.judul}" menunggu verifikasi petugas.`,
+            });
+        }
+
+        return hasil;
+    });
+
+    await sinkronkanNotifDenda(sesi.id, notifikasiDenda);
+    const notifikasi = await ambilNotif(sesi.id);
     const sedangDiulas = riwayat.find(
         (p) => String(p.id) === sp.ulas && p.status === "Selesai"
     );
@@ -79,41 +104,13 @@ export default async function DashboardMahasiswa({ searchParams }) {
         <h1>Halo, {sesi.nama}</h1>
         <Pesan sp={sp} />
 
-        {(tertunggak.length > 0 || dendaBerjalan > 0) && (
-            <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-kuning bg-[repeating-linear-gradient(135deg,transparent_0_14px,rgba(11,27,77,0.07)_14px_28px)]">
-            <h2>Status Denda</h2>
-
-            {tertunggak.length > 0 && (
-                <p>
-                Denda tertunggak <strong>{rupiah(totalTertunggak)}</strong>.
-                Pengajuan pinjaman baru <strong>diblokir</strong> sampai petugas
-                mencatat pelunasan.
-                </p>
-            )}
-
-            {dendaBerjalan > 0 && (
-                <p>
-                Denda berjalan dari buku yang terlambat:{" "}
-                <strong>{rupiah(dendaBerjalan)}</strong>.
-                </p>
-            )}
-
-            {adaBuktiMenunggu && (
-                <p className="mt-3 font-semibold">
-                    Bukti pembayaran sudah dikirim dan menunggu verifikasi petugas.
-                </p>
-            )}
-
-            </section>
-        )}
-
         <section className={KELAS_KARTU}>
             <div className="flex items-baseline justify-between gap-4 mb-2.5">
             <h2>Notifikasi</h2>
 
             {adaNotifBelumDibaca && (
                 <form action={tandaiNotifDibaca}>
-                <button className="cursor-pointer font-bold text-biru underline">
+                <button type="submit" className={KELAS_TOMBOL_AKSI}>
                     Tandai semua dibaca
                 </button>
                 </form>
@@ -123,12 +120,26 @@ export default async function DashboardMahasiswa({ searchParams }) {
             {notifikasi.map((n) => (
                 <div
                     key={n.id}
-                    className="grid gap-0.5 border-b-2 border-dashed border-biru-muda py-3.5"
+                    className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-dashed border-biru-muda py-3.5"
                 >
-                    <span>
-                    {!n.dibaca && <Badge>Baru</Badge>} {n.pesan}
-                    </span>
-                    <small>{formatTanggal(n.dibuat_pada)}</small>
+                    <div className="grid min-w-0 gap-0.5">
+                        <span>
+                            {!n.dibaca && <Badge>Baru</Badge>} {n.pesan}
+                        </span>
+                        <small>{formatTanggal(n.dibuat_pada)}</small>
+                    </div>
+
+                    {!n.dibaca && (
+                        <form action={tandaiNotifSatuDibaca}>
+                            <input type="hidden" name="id" value={n.id} />
+                            <button
+                                type="submit"
+                                className={KELAS_TOMBOL_TANDAI_BACA}
+                            >
+                                Tandai dibaca
+                            </button>
+                        </form>
+                    )}
                 </div>
             ))}
 
