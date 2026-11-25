@@ -5,6 +5,7 @@ import {tambahKategori, ubahKategori, hapusKategori} from "@/app/actions/categor
 import CategoryForm from "@/components/CategoryForm";
 import TombolHapus from "@/components/TombolHapus";
 import Pesan from "@/components/Pesan";
+import { TOMBOL_EDIT, TOMBOL_BATAL } from "@/components/gayaTombol";
 
 export default async function KelolaKategori({ searchParams }) {
     await wajibPeran("Admin");
@@ -46,10 +47,7 @@ export default async function KelolaKategori({ searchParams }) {
 
                 {kategoriDiedit && (
                     <p className="mt-4">
-                        <Link
-                            href="/admin/kategori"
-                            className="font-bold text-biru underline"
-                        >
+                        <Link href="/admin/kategori" className={TOMBOL_BATAL}>
                             Batal mengubah
                         </Link>
                     </p>
@@ -77,11 +75,8 @@ export default async function KelolaKategori({ searchParams }) {
                                 <td>{item.jumlah_buku}</td>
                                 <td>
                                     <div className="flex flex-wrap items-center gap-2.5">
-                                        <Link
-                                            href={`/admin/kategori?edit=${item.id}`}
-                                            className="font-bold text-biru underline"
-                                        >
-                                            Edit
+                                        <Link href={`/admin/kategori?edit=${item.id}`} className={TOMBOL_EDIT}>
+                                            ✎ Edit
                                         </Link>
 
                                         <TombolHapus

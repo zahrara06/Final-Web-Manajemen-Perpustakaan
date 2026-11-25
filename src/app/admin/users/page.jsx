@@ -5,6 +5,7 @@ import { tambahPengguna, ubahPengguna, hapusPengguna } from "@/app/actions/users
 import UserForm from "@/components/UserForm";
 import TombolHapus from "@/components/TombolHapus";
 import Pesan from "@/components/Pesan";
+import { TOMBOL_EDIT, TOMBOL_BATAL } from "@/components/gayaTombol";
 
 export default async function KelolaPengguna({ searchParams }) {
     const sesi = await wajibPeran("Admin");
@@ -54,10 +55,7 @@ export default async function KelolaPengguna({ searchParams }) {
 
                 {penggunaDiedit && (
                     <p className="mt-4">
-                        <Link
-                            href="/admin/users"
-                            className="font-bold text-biru underline"
-                        >
+                        <Link href="/admin/users" className={TOMBOL_BATAL}>
                             Batal mengubah
                         </Link>
                     </p>
@@ -106,11 +104,8 @@ export default async function KelolaPengguna({ searchParams }) {
                                 </td>
                                 <td>
                                     <div className="flex flex-wrap items-center gap-2.5">
-                                        <Link
-                                            href={`/admin/users?edit=${item.id}`}
-                                            className="font-bold text-biru underline"
-                                        >
-                                            Edit
+                                        <Link href={`/admin/users?edit=${item.id}`} className={TOMBOL_EDIT}>
+                                            ✎ Edit
                                         </Link>
 
                                         {item.id !== sesi.id && (
