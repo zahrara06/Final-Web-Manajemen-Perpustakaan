@@ -39,11 +39,11 @@ export default async function Beranda() {
 
     return (
         <>
-            <section className="grid items-center overflow-hidden rounded-[28px] border-[2.5px] border-biru-tua bg-biru-tua text-white shadow-hero md:grid-cols-[1.15fr_0.85fr]">
-                <div className="grid gap-4 p-[clamp(2rem,4vw,4rem)]">
+            <section className="grid items-center overflow-hidden rounded-[28px] border-[2.5px] border-biru-tua bg-biru-tua text-white shadow-hero sm:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                <div className="grid gap-4 p-[clamp(1.5rem,3vw,3rem)]">
                     <Badge>Perpustakaan Kampus Digital</Badge>
 
-                    <h1>
+                    <h1 className="text-[clamp(2rem,3.8vw,3.8rem)]">
                         Temukan bacaan berikutnya di{" "}
                         <mark className="inline-block -rotate-[1.5deg] rounded-lg bg-kuning px-[0.3em] text-biru-tua">
                             LiteraSpace
@@ -72,7 +72,7 @@ export default async function Beranda() {
                 </div>
 
                 <div
-                    className="h-[clamp(300px,52vh,560px)] bg-[radial-gradient(circle,#1d4ed8,#0b1b4d_70%)]"
+                    className="h-[clamp(260px,40vh,420px)] bg-[radial-gradient(ellipse_at_center,rgba(29,78,216,0.55)_0%,rgba(29,78,216,0.25)_45%,transparent_75%)] sm:h-auto sm:self-stretch"
                     aria-hidden="true"
                 >
                     <Latar3D />
@@ -80,12 +80,12 @@ export default async function Beranda() {
             </section>
 
             <section>
-                <div className="flex items-baseline justify-between gap-4 mb-5">
+                <div className="mb-5 flex items-center justify-between gap-4">
                     <h2>5 Buku Terpopuler</h2>
 
                     <Link
                         href="/katalog"
-                        className="font-bold text-biru underline"
+                        className="inline-flex items-center justify-center rounded-xl border-[2.5px] border-biru-tua bg-kuning px-4 py-2 text-center font-bold text-biru-tua shadow-tombol transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d]"
                     >
                         Lihat semua koleksi
                     </Link>
@@ -103,12 +103,12 @@ export default async function Beranda() {
             </section>
 
             <section>
-                <div className="flex items-baseline justify-between gap-4 mb-5">
+                <div className="mb-5 flex items-center justify-between gap-4">
                     <h2>Pengumuman Terbaru</h2>
 
                     <Link
                         href="/pengumuman"
-                        className="font-bold text-biru underline"
+                        className="inline-flex items-center justify-center rounded-xl border-[2.5px] border-biru-tua bg-kuning px-4 py-2 text-center font-bold text-biru-tua shadow-tombol transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d]"
                     >
                         Semua pengumuman
                     </Link>
@@ -119,7 +119,7 @@ export default async function Beranda() {
                         <Link
                             key={pengumuman.id}
                             href={`/pengumuman/${pengumuman.id}`}
-                            className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white"
+                            className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white transition duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-hero motion-reduce:transform-none motion-reduce:transition-none"
                         >
                             <Badge>{pengumuman.kategori}</Badge>
 

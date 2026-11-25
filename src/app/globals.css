@@ -81,6 +81,21 @@
     }
 }
 
+.transisi-halaman {
+    animation: transisi-halaman 240ms ease-out both;
+}
+
+@keyframes transisi-halaman {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .anim-naik {
     animation: naik 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: var(--d, 0ms);
@@ -92,7 +107,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .anim-naik,
-    .anim-melayang {
+    .anim-melayang,
+    .transisi-halaman {
         animation: none;
     }
 }

@@ -38,7 +38,7 @@ export default function BookCard({ buku, peringkat }) {
     return (
         <Link
             href={`/katalog/${buku.id}`}
-            className="relative grid content-start gap-3 rounded-[18px] border-[2.5px] border-biru-tua bg-white p-3 shadow-keras transition hover:-translate-x-[3px] hover:-translate-y-[3px] hover:-rotate-[0.6deg]"
+            className="relative grid h-full grid-rows-[auto_1fr] gap-3 rounded-[18px] border-[2.5px] border-biru-tua bg-white p-3 shadow-keras transition hover:-translate-x-[3px] hover:-translate-y-[3px] hover:-rotate-[0.6deg]"
         >
             {peringkat && (
                 <span className="absolute -top-3 -left-3 z-[2] -rotate-[8deg] rounded-xl border-[2.5px] border-biru-tua bg-kuning px-2.5 font-extrabold">
@@ -48,10 +48,16 @@ export default function BookCard({ buku, peringkat }) {
 
             <Sampul buku={buku} />
 
-            <div className="grid gap-0.5">
-                <small>{buku.nama_kategori}</small>
-                <h3>{buku.judul}</h3>
-                <p className="text-sm opacity-75">{buku.penulis}</p>
+            <div className="grid content-start gap-0.5">
+                <small className="line-clamp-1 min-h-5">
+                    {buku.nama_kategori}
+                </small>
+                <h3 className="line-clamp-2 min-h-[2.35em]">
+                    {buku.judul}
+                </h3>
+                <p className="line-clamp-2 min-h-10 text-sm opacity-75">
+                    {buku.penulis}
+                </p>
 
                 <div className="mt-1.5 flex flex-wrap gap-3 text-xs font-semibold">
                     {buku.rata_rating !== undefined && (

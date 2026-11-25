@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
@@ -10,11 +9,9 @@ import {
     catatDendaLunas,
     putuskanPerpanjangan,
 } from "@/app/actions/loans";
+import Badge from "@/components/Badge";
 import Pesan from "@/components/Pesan";
 import { TOMBOL_HAPUS, TOMBOL_SETUJU } from "@/components/gayaTombol";
-
-const KELAS_KARTU_TAUTAN =
-    "block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white font-bold";
 
 const KELAS_TOMBOL_AKSI =
     "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-3 py-1 text-sm shadow-[2px_2px_0_#0b1b4d] bg-kuning";
@@ -23,7 +20,7 @@ const KELAS_TOMBOL_SUBMIT =
     "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] disabled:cursor-not-allowed disabled:opacity-55 px-5 py-2.5 shadow-tombol bg-kuning";
 
 const KELAS_TABEL =
-    "w-full border-separate border-spacing-0 overflow-hidden rounded-[14px] border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5";
+    "w-full border-separate border-spacing-0 overflow-hidden rounded-[14px] border-[2.5px] border-biru-tua bg-white shadow-keras [&_th]:bg-biru-tua [&_th]:px-3.5 [&_th]:py-2.5 [&_th]:text-left [&_th]:text-sm [&_th]:text-white [&_td]:border-t [&_td]:border-biru-muda [&_td]:px-3.5 [&_td]:py-2.5 [&_td]:align-middle [&_td]:text-[0.92rem] [&_td_form]:inline-flex [&_td_form]:items-center [&_td_form]:gap-1.5 [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-kuning-muda/70";
 
 const DASAR_QUERY = `
     FROM peminjaman p
@@ -31,7 +28,7 @@ const DASAR_QUERY = `
     JOIN buku b ON b.id = p.buku_id`;
 
 export default async function DashboardPegawai({ searchParams }) {
-    await wajibPeran("Pegawai", "Admin");
+    const sesi = await wajibPeran("Pegawai", "Admin");
     const sp = await searchParams;
     const kata = (sp.q ?? "").trim();
 
@@ -74,27 +71,40 @@ export default async function DashboardPegawai({ searchParams }) {
 
   return (
     <>
-        <h1>Meja Sirkulasi</h1>
+        <section className="anim-naik relative overflow-hidden rounded-[28px] border-[2.5px] border-biru-tua bg-biru-tua text-white shadow-hero">
+            <div
+                aria-hidden="true"
+                className="anim-melayang absolute -right-12 -top-12 size-52 rounded-full bg-kuning"
+            />
+            <div
+                aria-hidden="true"
+                style={{ animationDelay: "1.2s" }}
+                className="anim-melayang absolute right-40 top-28 size-16 rounded-full border-[6px] border-biru-muda/50"
+            />
+            <div
+                aria-hidden="true"
+                style={{ animationDelay: "2s" }}
+                className="anim-melayang absolute right-12 top-40 size-8 rotate-12 rounded-md bg-biru"
+            />
+
+            <div className="relative grid gap-3 p-[clamp(1.5rem,4vw,3rem)]">
+                <div className="w-fit">
+                    <Badge>Pegawai</Badge>
+                </div>
+                <h1 className="text-[clamp(1.7rem,3.6vw,2.8rem)]">
+                    Selamat datang,{" "}
+                    <span className="text-kuning">{sesi.nama}</span>
+                </h1>
+                <p className="max-w-[50ch] text-biru-muda">
+                    Kelola antrean peminjaman, perpanjangan, pengembalian,
+                    dan denda perpustakaan.
+                </p>
+            </div>
+        </section>
         <Pesan sp={sp} />
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
-            <Link href="/kelola/buku" className={KELAS_KARTU_TAUTAN}>
-                Kelola Buku
-                <span className="mt-0.5 block text-sm font-normal opacity-75">
-                    Tambah, ubah, hapus koleksi dan stok
-                </span>
-            </Link>
-
-            <Link href="/kelola/pengumuman" className={KELAS_KARTU_TAUTAN}>
-                Kelola Pengumuman
-                <span className="mt-0.5 block text-sm font-normal opacity-75">
-                    Jadwal layanan dan agenda perpustakaan
-                </span>
-            </Link>
-        </div>
-
         <section>
-            <h2 className="mb-4">Antrean Peminjaman ({antrean.rowCount})</h2>
+            <h2 className="mb-4">Antrean Peminjaman</h2>
 
             <div className="overflow-x-auto">
                 <table className={KELAS_TABEL}>
@@ -156,7 +166,7 @@ export default async function DashboardPegawai({ searchParams }) {
         </section>
 
         <section>
-            <h2 className="mb-4">Pengajuan Perpanjangan ({perpanjangan.rowCount})</h2>
+            <h2 className="mb-4">Pengajuan Perpanjangan</h2>
 
             <div className="overflow-x-auto">
                 <table className={KELAS_TABEL}>
@@ -191,7 +201,7 @@ export default async function DashboardPegawai({ searchParams }) {
                                         id={p.id}
                                         nilai="tolak"
                                         label="Tolak"
-                                        kelas="{TOMBOL_HAPUS}"
+                                        kelas={TOMBOL_HAPUS}
                                     />
                                 </div>
                             </td>
@@ -287,7 +297,7 @@ export default async function DashboardPegawai({ searchParams }) {
         </section>
 
         <section>
-            <h2 className="mb-4">Denda Tertunggak ({denda.rowCount})</h2>
+            <h2 className="mb-4">Denda Tertunggak</h2>
 
             <div className="overflow-x-auto">
                 <table className={KELAS_TABEL}>

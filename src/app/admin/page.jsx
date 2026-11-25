@@ -1,16 +1,6 @@
 import Link from "next/link";
-import pool from "@/lib/db";
 import { wajibPeran } from "@/lib/auth";
-import AngkaHitung from "@/components/AngkaHitung";
 import Badge from "@/components/Badge";
-
-const STATISTIK = [
-    { kunci: "total_judul", label: "Judul buku" },
-    { kunci: "total_eksemplar", label: "Total eksemplar" },
-    { kunci: "total_mahasiswa", label: "Mahasiswa terdaftar" },
-    { kunci: "transaksi_aktif", label: "Transaksi aktif" },
-    { kunci: "denda_lunas", label: "Denda lunas", rupiah: true },
-];
 
 const MENU = [
     {
@@ -48,17 +38,6 @@ const MENU = [
 export default async function DashboardAdmin() {
     const sesi = await wajibPeran("Admin");
 
-    const { rows } = await pool.query(`
-        SELECT
-            (SELECT COUNT(*) FROM buku) AS total_judul,
-            (SELECT COALESCE(SUM(stok_total), 0) FROM buku) AS total_eksemplar,
-            (SELECT COUNT(*) FROM pengguna WHERE peran = 'Mahasiswa') AS total_mahasiswa,
-            (SELECT COUNT(*) FROM peminjaman WHERE status = 'Sedang Dipinjam') AS transaksi_aktif,
-            (SELECT COALESCE(SUM(denda_total), 0) FROM peminjaman WHERE status_denda = 'Lunas') AS denda_lunas
-    `);
-
-    const statistik = rows[0];
-
     return (
         <>
             <section className="anim-naik relative overflow-hidden rounded-[28px] border-[2.5px] border-biru-tua bg-biru-tua text-white shadow-hero">
@@ -78,7 +57,9 @@ export default async function DashboardAdmin() {
                 />
 
                 <div className="relative grid gap-3 p-[clamp(1.5rem,4vw,3rem)]">
-                    <Badge>Admin</Badge>
+                    <div className="w-fit">
+                        <Badge>Admin</Badge>
+                    </div>
 
                     <h1 className="text-[clamp(1.7rem,3.6vw,2.8rem)]">
                         Selamat datang,{" "}
@@ -86,30 +67,9 @@ export default async function DashboardAdmin() {
                     </h1>
 
                     <p className="max-w-[50ch] text-biru-muda">
-                        Ringkasan kondisi perpustakaan hari ini dan akses cepat
-                        ke seluruh modul pengelolaan.
+                        Akses cepat ke seluruh modul pengelolaan perpustakaan.
                     </p>
                 </div>
-
-                <dl className="relative grid grid-cols-2 border-t-[2.5px] border-white/20 md:grid-cols-3 lg:grid-cols-5">
-                    {STATISTIK.map((s, i) => (
-                        <div
-                            key={s.kunci}
-                            style={{ "--d": `${250 + i * 100}ms` }}
-                            className="anim-naik border-b border-r border-white/15 px-6 py-5 last:border-r-0"
-                        >
-                            <dt className="text-sm text-biru-muda">
-                                {s.label}
-                            </dt>
-                            <dd className="mt-1 font-judul text-[2rem] font-extrabold leading-none text-kuning">
-                                <AngkaHitung
-                                    nilai={Number(statistik[s.kunci])}
-                                    rupiah={s.rupiah}
-                                />
-                            </dd>
-                        </div>
-                    ))}
-                </dl>
             </section>
 
             <section>

@@ -14,8 +14,6 @@ const MENU_UMUM = [
 const MENU_PERAN = {
     Admin: [
         { href: "/admin", nama: "Dashboard Admin" },
-        { href: "/kelola/buku", nama: "Kelola Buku" },
-        { href: "/kelola/pengumuman", nama: "Kelola Pengumuman" },
     ],
     Pegawai: [
         { href: "/pegawai", nama: "Sirkulasi" },

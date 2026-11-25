@@ -24,7 +24,7 @@ export default async function DaftarPengumuman() {
                         key={p.id}
                         href={`/pengumuman/${p.id}`}
                         style={{ "--d": `${Math.min(i, 8) * 60}ms` }}
-                        className="anim-naik group flex flex-col gap-2 rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras transition hover:-translate-y-1 hover:bg-kuning-muda"
+                        className="anim-naik group flex flex-col gap-2 rounded-[18px] border-[2.5px] border-biru-tua bg-white p-5 shadow-keras transition duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:bg-kuning-muda hover:shadow-hero motion-reduce:transform-none motion-reduce:transition-none"
                     >
                         <div className="flex items-center justify-between gap-2">
                             <Badge>{p.kategori}</Badge>

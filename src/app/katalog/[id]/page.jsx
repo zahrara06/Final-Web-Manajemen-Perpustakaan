@@ -13,6 +13,7 @@ const KELAS_TOMBOL =
 
 export default async function DetailBuku({ params, searchParams }) {
   const { id } = await params;
+
   if (!/^\d+$/.test(id)) notFound();
 
   const { rows } = await pool.query(
@@ -27,7 +28,9 @@ export default async function DetailBuku({ params, searchParams }) {
      GROUP BY b.id, k.nama`,
     [id]
   );
+
   const buku = rows[0];
+
   if (!buku) notFound();
 
   const ulasan = await pool.query(
@@ -56,10 +59,12 @@ export default async function DetailBuku({ params, searchParams }) {
        LIMIT 1`,
       [sesi.id]
     );
+
     terblokirDenda = denda.rowCount > 0;
   }
 
   let aksiPinjam;
+
   if (!sesi) {
     aksiPinjam = (
       <Link href={`/login?dari=/katalog/${id}`} className={KELAS_TOMBOL}>
@@ -88,6 +93,7 @@ export default async function DetailBuku({ params, searchParams }) {
     aksiPinjam = (
       <form action={ajukanPinjam}>
         <input type="hidden" name="buku_id" value={buku.id} />
+
         <button type="submit" className={KELAS_TOMBOL}>
           Ajukan Pinjam
         </button>
@@ -100,55 +106,124 @@ export default async function DetailBuku({ params, searchParams }) {
   return (
     <>
       <Pesan sp={sp} />
-      <section className="grid items-start gap-8 md:grid-cols-[280px_1fr]">
-        <Sampul buku={buku} />
-        <div>
+
+      <section className="grid items-start gap-8 rounded-[24px] border-[2.5px] border-biru-tua bg-white p-[clamp(1rem,3vw,2rem)] shadow-keras md:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] md:gap-10">
+        <div className="mx-auto w-full max-w-[280px] md:mx-0">
+          <Sampul buku={buku} />
+        </div>
+
+        <div className="min-w-0">
           <Badge>{buku.nama_kategori}</Badge>
-          <h1 className="my-2.5">{buku.judul}</h1>
-          <p>
+
+          <h1 className="my-2.5 text-[clamp(2rem,4vw,3.8rem)]">
+            {buku.judul}
+          </h1>
+
+          <p className="inline-flex items-center gap-2 rounded-full bg-kuning-muda px-3 py-1">
             <Bintang nilai={buku.rata_rating} /> ({buku.jumlah_ulasan} ulasan)
           </p>
-          <dl className="my-4 grid grid-cols-[max-content_1fr] gap-x-5 gap-y-1.5 [&_dt]:font-bold">
-            <dt>Penulis</dt>
-            <dd>{buku.penulis}</dd>
-            <dt>Penerbit</dt>
-            <dd>
-              {buku.penerbit}, {buku.tahun_terbit}
-            </dd>
-            <dt>ISBN</dt>
-            <dd>{buku.isbn}</dd>
-            <dt>Stok tersedia</dt>
-            <dd>
-              {buku.stok_tersedia} dari {buku.stok_total}
-            </dd>
-            <dt>Maksimal pinjam</dt>
-            <dd>{buku.durasi_pinjam_hari} hari</dd>
-            <dt>Denda keterlambatan</dt>
-            <dd>{rupiah(buku.denda_per_hari)} per hari</dd>
+
+          <dl className="my-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">Penulis</dt>
+
+              <dd className="break-words font-semibold">{buku.penulis}</dd>
+            </div>
+
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">Penerbit</dt>
+
+              <dd className="break-words font-semibold">
+                {buku.penerbit}, {buku.tahun_terbit}
+              </dd>
+            </div>
+
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">ISBN</dt>
+
+              <dd className="break-words font-semibold">{buku.isbn}</dd>
+            </div>
+
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">Stok tersedia</dt>
+
+              <dd className="font-semibold">
+                {buku.stok_tersedia} dari {buku.stok_total}
+              </dd>
+            </div>
+
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">Maksimal pinjam</dt>
+
+              <dd className="font-semibold">{buku.durasi_pinjam_hari} hari</dd>
+            </div>
+
+            <div className="rounded-xl border-2 border-biru-muda bg-biru-muda/30 px-4 py-2.5">
+              <dt className="text-sm font-bold text-biru">
+                Denda keterlambatan
+              </dt>
+
+              <dd className="font-semibold">
+                {rupiah(buku.denda_per_hari)} per hari
+              </dd>
+            </div>
           </dl>
-          {aksiPinjam}
+
+          <div className="flex flex-wrap items-center gap-3">{aksiPinjam}</div>
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-4">Ulasan Mahasiswa</h2>
+      <section className="rounded-[24px] border-[2.5px] border-biru-tua bg-white p-[clamp(1rem,3vw,2rem)] shadow-keras">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2>Ulasan Mahasiswa</h2>
+
+          <Badge>{buku.jumlah_ulasan} ulasan</Badge>
+        </div>
+
         {ulasan.rowCount === 0 && (
-          <p className="p-5 text-center opacity-70">
+          <p className="rounded-xl border-2 border-dashed border-biru-muda bg-kuning-muda/50 p-5 text-center opacity-80">
             Belum ada ulasan untuk buku ini.
           </p>
         )}
-        {ulasan.rows.map((u, i) => (
-          <div
-            key={i}
-            className="grid gap-0.5 border-b-2 border-dashed border-biru-muda py-3.5"
-          >
-            <strong>
-              {u.nama_lengkap} <Bintang nilai={u.rating} />
-            </strong>
-            <span>{u.komentar}</span>
-            <small>{formatTanggal(u.dibuat_pada)}</small>
-          </div>
-        ))}
+
+        <div className="flex flex-wrap items-start gap-4">
+          {ulasan.rows.map((u) => (
+            <article
+              key={u.id}
+              className="grid w-full max-w-[36rem] content-start gap-2 rounded-xl border-2 border-biru-muda bg-white p-4 shadow-[3px_3px_0_#dbe7ff]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <strong>{u.nama_lengkap}</strong>
+
+                <Bintang nilai={u.rating} />
+              </div>
+
+              {u.komentar.length > 140 ? (
+                <details className="group">
+                  <summary className="list-none cursor-pointer marker:content-none">
+                    <span className="line-clamp-3 break-words group-open:hidden">
+                      {u.komentar}
+                    </span>
+
+                    <span className="mt-1 inline-block font-semibold text-biru group-open:hidden">
+                      Lainnya
+                    </span>
+
+                    <span className="hidden font-semibold text-biru group-open:inline">
+                      Lebih sedikit
+                    </span>
+                  </summary>
+
+                  <p className="mt-2 break-words">{u.komentar}</p>
+                </details>
+              ) : (
+                <p className="break-words">{u.komentar}</p>
+              )}
+
+              <small>{formatTanggal(u.dibuat_pada)}</small>
+            </article>
+          ))}
+        </div>
       </section>
     </>
   );
