@@ -175,13 +175,3 @@ UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE isbn = '9780201633610';
 INSERT INTO peminjaman (pengguna_id, buku_id, status, tanggal_pinjam, jatuh_tempo, tanggal_kembali, denda_total, status_denda)
 SELECT (SELECT id FROM pengguna WHERE email = 'denda@student.literaspace.ac.id'), id, 'Selesai', CURRENT_DATE - 28, CURRENT_DATE - 18, CURRENT_DATE - 3, 15000, 'Tertunggak'
 FROM buku WHERE isbn = '9780199644704';
-
--- ======================== NOTIFIKASI ========================
-
-INSERT INTO notifikasi (pengguna_id, pesan)
-SELECT id, 'Selamat datang di LiteraSpace! Telusuri katalog dan ajukan pinjaman pertama Anda.'
-FROM pengguna WHERE peran = 'Mahasiswa';
-
-INSERT INTO notifikasi (pengguna_id, pesan)
-SELECT id, 'Denda baru Rp 15.000 tercatat untuk buku The Concept of Law.'
-FROM pengguna WHERE email = 'denda@student.literaspace.ac.id';
