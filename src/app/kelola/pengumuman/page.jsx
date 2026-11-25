@@ -7,6 +7,7 @@ import AnnouncementForm from "@/components/AnnouncementForm";
 import Badge from "@/components/Badge";
 import TombolHapus from "@/components/TombolHapus";
 import Pesan from "@/components/Pesan";
+import { TOMBOL_EDIT, TOMBOL_BATAL } from "@/components/gayaTombol";
 
 export default async function KelolaPengumuman({ searchParams }) {
     await wajibPeran("Pegawai", "Admin");
@@ -22,11 +23,13 @@ export default async function KelolaPengumuman({ searchParams }) {
         <section className="block border-[2.5px] border-biru-tua rounded-[18px] shadow-keras p-5 bg-white">
             <h2 className="mb-4">{diedit ? `Ubah Pengumuman #${diedit.id}` : "Tambah Pengumuman"}</h2>
             <AnnouncementForm key={diedit?.id ?? "baru"} aksi={diedit ? ubahPengumuman : tambahPengumuman} pengumuman={diedit} />
-            {diedit && <p className="mt-4">
-                <Link href="/kelola/pengumuman" className="font-bold text-biru underline">
-                    Batal mengubah
-                </Link>
-                </p>}
+            {diedit && (
+                <p className="mt-4">
+                    <Link href="/kelola/pengumuman" className={TOMBOL_BATAL}>
+                        Batal mengubah
+                    </Link>
+                </p>
+            )}
         </section>
 
         <div className="overflow-x-auto">
@@ -53,7 +56,9 @@ export default async function KelolaPengumuman({ searchParams }) {
                         <td><Badge warna={p.status === "Published" ? "biru" : ""}>{p.status}</Badge></td>
                         <td>
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <Link href={`/kelola/pengumuman?edit=${p.id}`} className="font-bold text-biru underline">Edit</Link>
+                            <Link href={`/kelola/pengumuman?edit=${p.id}`} className={TOMBOL_EDIT}>
+                                ✎ Edit
+                            </Link>
                             <TombolHapus aksi={hapusPengumuman} id={p.id} pesan={`Hapus pengumuman "${p.judul}"?`} />
                         </div>
                         </td>
