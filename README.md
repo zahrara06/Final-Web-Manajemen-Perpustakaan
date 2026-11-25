@@ -1,38 +1,97 @@
-# Final-Web-Manajemen-Perpustakaan
+# LiteraSpace — Manajemen Perpustakaan
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+LiteraSpace adalah aplikasi manajemen perpustakaan kampus untuk mengelola koleksi buku, pengumuman, peminjaman, pengembalian, dan denda. Aplikasi memiliki akses berbeda untuk Guest, Mahasiswa, Pegawai, dan Admin.
 
-## Getting Started
+## Fitur
 
-First, run the development server:
+- **Guest:** melihat katalog buku, detail buku, dan pengumuman publik.
+- **Mahasiswa:** mengajukan peminjaman dan perpanjangan, melihat status serta riwayat pinjaman, mengirim bukti pembayaran denda, menerima notifikasi, dan memberi ulasan buku.
+- **Pegawai:** mengelola buku dan pengumuman, memproses permohonan pinjaman, mengonfirmasi pengembalian, serta memverifikasi pembayaran dan mencatat pelunasan denda.
+- **Admin:** mengelola pengguna dan kategori, memantau transaksi, mengunduh laporan transaksi atau denda dalam format CSV, serta mengakses modul pengelolaan perpustakaan.
+
+## Teknologi
+
+- Next.js 16 dengan App Router
+- React 19 dan JavaScript (JSX)
+- Tailwind CSS 4
+- PostgreSQL dengan `pg`
+- Autentikasi sesi menggunakan JWT dan `jose`
+- bcryptjs untuk pemrosesan kata sandi
+- React Three Fiber dan Drei untuk adegan 3D di beranda
+
+## Persyaratan
+
+- Node.js 20.9 atau lebih baru
+- npm
+- Server PostgreSQL yang dapat diakses aplikasi
+
+## Menjalankan Secara Lokal
+
+1. Clone repositori dan masuk ke folder proyek.
+2. Pasang dependensi:
+
+   ```bash
+   npm install
+   ```
+
+3. Buat file `.env.local` di folder utama proyek:
+
+   ```env
+   DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+   SESSION_SECRET=ganti-dengan-secret-acak-yang-panjang
+   ```
+
+   `DATABASE_URL` adalah alamat koneksi PostgreSQL. `SESSION_SECRET` digunakan untuk menandatangani sesi login dan wajib diisi. Jangan membagikan atau mengunggah isi `.env.local`.
+
+4. Siapkan database PostgreSQL beserta skema dan data awal yang diperlukan. **Repositori ini tidak menyertakan berkas migrasi atau seed database**, sehingga database harus disiapkan terpisah.
+5. Jalankan server pengembangan:
+
+   ```bash
+   npm run dev
+   ```
+
+6. Buka [http://localhost:3000](http://localhost:3000).
+
+## Perintah
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev    # Menjalankan server pengembangan
+npm run lint   # Menjalankan ESLint
+npm run build  # Membuat build produksi
+npm start      # Menjalankan build produksi
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Jalankan `npm run build` sebelum `npm start`.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Rute Utama
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Rute | Keterangan |
+| --- | --- |
+| `/` | Beranda |
+| `/katalog` | Katalog buku |
+| `/katalog/[id]` | Detail buku dan ulasan |
+| `/pengumuman` | Daftar pengumuman |
+| `/pengumuman/[id]` | Detail pengumuman |
+| `/login` dan `/register` | Masuk dan pendaftaran |
+| `/lupa-password` | Reset kata sandi |
+| `/mahasiswa` | Dashboard Mahasiswa |
+| `/pegawai` | Dashboard Pegawai dan sirkulasi |
+| `/admin` | Dashboard Admin |
+| `/admin/users` | Manajemen pengguna |
+| `/admin/kategori` | Manajemen kategori |
+| `/admin/transaksi` | Monitoring transaksi |
+| `/kelola/buku` | Manajemen buku |
+| `/kelola/pengumuman` | Manajemen pengumuman |
 
-## Learn More
+Halaman pengelolaan dan transaksi dibatasi berdasarkan peran pengguna.
 
-To learn more about Next.js, take a look at the following resources:
+## Struktur Proyek
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+src/
+├── app/          Halaman, route handler API, dan server actions
+├── components/   Komponen antarmuka yang digunakan ulang
+├── lib/          Koneksi database, autentikasi, notifikasi, dan utilitas
+└── middleware.js Middleware aplikasi
+public/           Aset statis
+```
