@@ -83,7 +83,8 @@ export default function FormBayarDenda({ peminjamanId, judulBuku, nominal }) {
                                 <button
                                     type="button"
                                     onClick={() => setBuka(false)}
-                                    className="cursor-pointer font-bold text-biru-tua"
+                                    aria-label="Tutup dialog pembayaran denda"
+                                    className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl border-[2.5px] border-biru-tua bg-biru-tua px-3 py-1.5 text-sm font-bold text-white shadow-[2px_2px_0_#0b1b4d] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:bg-biru"
                                 >
                                     Tutup
                                 </button>
@@ -121,7 +122,6 @@ export default function FormBayarDenda({ peminjamanId, judulBuku, nominal }) {
 
                             <form
                                 action={ajukanBayarDenda}
-                                encType="multipart/form-data"
                                 className="mt-5 grid gap-3"
                             >
                                 <input
