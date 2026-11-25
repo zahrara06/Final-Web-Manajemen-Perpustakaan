@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { simpanProfil } from "@/app/actions/profil";
 import Avatar from "@/components/Avatar";
 import Badge from "@/components/Badge";
+import IndikatorKekuatanSandi from "@/components/IndikatorKekuatanSandi";
 import { TOMBOL_UTAMA } from "@/components/gayaTombol";
 
 const BATAS_FOTO = 2 * 1024 * 1024;
@@ -13,26 +14,6 @@ const TAB = [
     { kunci: "data", label: "Data Diri" },
     { kunci: "sandi", label: "Kata Sandi" },
 ];
-
-const TINGKAT = [
-    { label: "Terlalu pendek", warna: "bg-red-500" },
-    { label: "Lemah", warna: "bg-red-500" },
-    { label: "Sedang", warna: "bg-kuning" },
-    { label: "Kuat", warna: "bg-green-500" },
-    { label: "Sangat kuat", warna: "bg-green-600" },
-];
-
-function hitungKekuatan(sandi) {
-    if (sandi.length < 6) return 0;
-
-    let skor = 1;
-
-    if (sandi.length >= 10) skor++;
-    if (/[a-z]/.test(sandi) && /[A-Z]/.test(sandi)) skor++;
-    if (/\d/.test(sandi) && /[^A-Za-z0-9]/.test(sandi)) skor++;
-
-    return Math.min(skor, 4);
-}
 
 function TombolSimpan() {
     const { pending } = useFormStatus();
@@ -76,9 +57,6 @@ export default function FormProfil({ pengguna }) {
     const [lihat, setLihat] = useState(false);
 
     const jenisSandi = lihat ? "text" : "password";
-    const skor = hitungKekuatan(sandiBaru);
-    const tingkat = TINGKAT[skor];
-    const terisi = sandiBaru ? Math.max(skor, 1) : 0;
 
     function saatPilihFoto(e) {
         const berkas = e.target.files?.[0];
@@ -296,38 +274,10 @@ export default function FormProfil({ pengguna }) {
                     </Kolom>
 
                     <div className="grid gap-2 md:col-span-2">
-                        <div className="flex gap-1.5">
-                            {[1, 2, 3, 4].map((n) => (
-                                <span
-                                    key={n}
-                                    className={`h-2.5 flex-1 rounded-full border-2 border-biru-tua transition-all duration-500 ${
-                                        n <= terisi ? tingkat.warna : "bg-white"
-                                    }`}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold">
-                            <span>
-                                {sandiBaru
-                                    ? `Kekuatan: ${tingkat.label}`
-                                    : "Minimal 6 karakter. Campur huruf besar, kecil, angka, dan simbol agar lebih kuat."}
-                            </span>
-
-                            {ulang && (
-                                <span
-                                    className={
-                                        ulang === sandiBaru
-                                            ? "text-green-700"
-                                            : "text-red-700"
-                                    }
-                                >
-                                    {ulang === sandiBaru
-                                        ? "Kata sandi cocok ✓"
-                                        : "Belum sama"}
-                                </span>
-                            )}
-                        </div>
+                        <IndikatorKekuatanSandi
+                            kataSandi={sandiBaru}
+                            kataSandiUlang={ulang}
+                        />
 
                         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-bold">
                             <input

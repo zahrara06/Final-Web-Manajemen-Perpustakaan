@@ -1,57 +1,46 @@
-import Link from "next/link";
-import { lupaPassword } from "@/app/actions/auth";
+import FormLupaPassword from "@/components/FormLupaPassword";
 import Pesan from "@/components/Pesan";
-
-const KELAS_TOMBOL =
-    "inline-block cursor-pointer text-center font-bold text-biru-tua border-[2.5px] border-biru-tua rounded-xl transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#0b1b4d] px-5 py-2.5 shadow-tombol bg-kuning";
 
 export default async function LupaPassword({ searchParams }) {
     const sp = await searchParams;
 
     return (
-        <section className="mx-auto grid max-w-ms gap-4">
-            <h1>Lupa Kata Sandi</h1>
-            <Pesan sp={sp} />
+        <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[28px] border-[2.5px] border-biru-tua bg-white shadow-hero md:grid-cols-[0.85fr_1.15fr]">
+            <aside className="relative isolate grid min-h-[280px] content-center overflow-hidden bg-biru-tua p-7 text-white sm:p-9 md:min-h-[620px]">
+                <div
+                    aria-hidden="true"
+                    className="anim-melayang absolute -right-12 -top-12 size-52 rounded-full bg-kuning"
+                />
+                <div
+                    aria-hidden="true"
+                    className="anim-melayang absolute bottom-16 right-10 size-16 rounded-full border-[6px] border-biru-muda/50"
+                />
 
-            <p>
-                Masukkan email dan nomor identitas (NIM/NIP) akun Anda
-                untuk verifikasi, lalu tentukan kata sandi baru.
-            </p>
+                <div className="relative z-10">
+                    <h1 className="text-[clamp(2rem,4vw,3.2rem)] text-white">
+                        Lupa kata sandi?
+                    </h1>
+                    <p className="mt-4 max-w-[34ch] text-biru-muda">
+                        Verifikasi akun dan buat kata sandi baru untuk kembali
+                        ke LiteraSpace.
+                    </p>
+                </div>
+            </aside>
 
-            <form action={lupaPassword} className="grid gap-3">
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    aria-label="Email"
-                    required
-                />
-                <input
-                    name="nomor_identitas"
-                    placeholder="Nomor identitas / NIM"
-                    aria-label="Nomor identitas"
-                    required
-                />
-                <input
-                    type="password"
-                    name="kata_sandi"
-                    placeholder="Kata sandi baru (min. 6 karakter)"
-                    aria-label="Kata sandi baru"
-                    required
-                />
-                <input
-                    type="password"
-                    name="ulangi"
-                    placeholder="Ulangi kata sandi baru"
-                    aria-label="Ulangi kata sandi"
-                    required
-                />
-                <button className={KELAS_TOMBOL}>Ubah kata sandi</button>
-            </form>
+            <div className="grid content-center gap-5 p-6 sm:p-9 lg:p-10">
+                <header className="grid gap-3">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-biru">
+                        Verifikasi akun
+                    </p>
+                    <h2>Buat kata sandi baru</h2>
+                    <p className="mt-2 text-sm text-biru-tua/70">
+                        Gunakan kata sandi yang kuat dan mudah Anda ingat.
+                    </p>
+                </header>
 
-            <Link href="/login" className="font-bold text-biru underline">
-                Kembali ke halaman masuk
-            </Link>
+                <Pesan sp={sp} />
+                <FormLupaPassword />
+            </div>
         </section>
     );
 }
